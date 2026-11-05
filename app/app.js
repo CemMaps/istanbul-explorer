@@ -2,17 +2,17 @@ import { loadTheme, catVar } from "./theme.js";
 import { icon } from "./icons.js";
 import { createMap, createMiniMap } from "./map.js";
 import { store } from "./store.js";
-import { tripStatus, sunTimes, forecast, fmtTime, istanbulToday, istMinutes, dayParts } from "./sky.js";
+import { tripStatus, sunTimes, forecast, fmtTime, istanbulToday, istMinutes } from "./sky.js";
 import { order, legMode, legsGeometry } from "./routes.js";
 import { renderSplash, badgeText } from "./splash.js";
-import { indexCodes, importFromHash, shareMyPicks, people, mergeIntoMine, removePerson, matches, fmtAsOf } from "./share.js";
+import { indexCodes, importFromHash, shareMyPicks, people, mergeIntoMine, removePerson, fmtAsOf } from "./share.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const norm = (s) => String(s ?? "").toLocaleLowerCase("tr").normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/ı/g, "i");
 const params = new URLSearchParams(location.search);
-const hydrateIcons = (root = document) => root.querySelectorAll("[data-icon]").forEach((el) => { el.innerHTML = icon(el.dataset.icon); el.removeAttribute("data-icon"); });
+const hydrateIcons = (root = document) => root.querySelectorAll("[data-icon]").forEach((el) => { el.innerHTML = icon(el.dataset.icon, el.dataset.size ? +el.dataset.size : undefined); el.removeAttribute("data-icon"); });
 
 // ---------- geometry ----------
 function distM([lon1, lat1], [lon2, lat2]) {
@@ -141,44 +141,6 @@ function renderList() {
     || `<p class="empty">Nothing in view.</p>`;
   $("#sheet-toggle").textContent = S.sheet === "open" ? "Show map" : `See all ${items.length}`;
   $("#sheet-bar-txt").textContent = `${items.length} ${items.length === 1 ? "place" : "places"} in view`;
-  renderRightNow();
-}
-
-// ---------- right now ----------
-function currentPart(sunsetMin) {
-  const now = istMinutes(new Date());
-  return dayParts(sunsetMin).find((p) => now >= p.from && now < p.to)?.id || (now < 540 ? "morning" : "evening");
-}
-function renderRightNow() {
-  const el = $("#rightnow");
-  const ref = S.near || CFG.map.home;
-  const sun = sunTimes(istanbulToday(), CFG.map.home);
-  const now = new Date();
-  const minsToSunset = (sun.sunset - now) / 60000;
-  const status = tripStatus(CFG.trip.days);
-  const part = currentPart(istMinutes(sun.sunset));
-  const wx = status.phase === "during" && FC?.status === "ok" ? FC.days[status.today]?.parts?.[part] : null;
-  const pool = PLACES.features.filter((f) => !f.properties.dim && f.properties.tier !== "bonus");
-  const nearest = (pred) => pool.filter((f) => pred(f.properties))
-    .map((f) => ({ p: f.properties, d: distM(ref, f.geometry.coordinates) })).sort((a, b) => a.d - b.d)[0];
-  let pick, head, reason, ico;
-  if (wx && wx.rain >= 50) {
-    pick = nearest((p) => p.indoor && p.tier === "must-see") || nearest((p) => p.indoor);
-    head = `Rain likely. ${pick?.p.name} is indoors.`; reason = `${wx.rain}% chance of rain now · ${fmtDist(pick?.d || 0)} away`; ico = "rain";
-  } else if (minsToSunset > 0 && minsToSunset < 100) {
-    pick = nearest((p) => p.best_time === "golden-hour");
-    head = `Golden hour soon${wx ? ", and it's dry" : ""}. Head to ${pick?.p.name}.`; reason = `Sunset ${fmtTime(sun.sunset)}`; ico = "sunset";
-  } else if (minsToSunset <= 0 || now < sun.sunrise) {
-    pick = nearest((p) => p.best_time === "evening" || p.category === "Neighbourhoods");
-    head = `Evening stroll: ${pick?.p.name}.`; reason = "Lively after dark"; ico = "sparkle";
-  } else {
-    pick = nearest((p) => p.tier === "must-see" && (p.best_time === part || p.best_time === "any")) || nearest((p) => p.tier === "must-see");
-    head = `${pick?.p.name} is a good shout now.`; reason = `${fmtDist(pick?.d || 0)} away · sunset ${fmtTime(sun.sunset)}`; ico = "sun";
-  }
-  if (!pick) { el.hidden = true; return; }
-  el.hidden = false;
-  el.dataset.open = pick.p.id;
-  el.innerHTML = `<span class="rn-ico">${icon(ico, 22)}</span><span class="rn-txt"><small>${status.phase === "before" ? "If you were there right now" : "Right now"}</small><b>${esc(head)}</b><small>${esc(reason)}</small></span>${icon("chevronRight", 20)}`;
 }
 
 // ---------- bottom sheet: closed / peek / open ----------
@@ -350,7 +312,7 @@ async function sharePlace(id) {
   const p = BYID[id]?.properties;
   if (!p) return;
   const url = `${location.origin}${location.pathname}#place=${encodeURIComponent(id)}`;
-  const text = `${p.name}, for our Istanbul trip`;
+  const text = `${p.name}: one for our Istanbul trip. Opens in Istanbul Explorer with photos, how to get there and what's nearby.`;
   if (navigator.share) {
     try { await navigator.share({ title: p.name, text, url }); return; } catch (err) { if (err.name === "AbortError") return; }
   }
@@ -389,12 +351,10 @@ $("#dialog").addEventListener("click", (e) => { if (e.target.id === "dialog") cl
 
 function askName() {
   openDialog(`<h2>Who's this?</h2>
-    <p>Just a first name, so the family can tell whose picks are whose. It stays on this phone. No account.</p>
-    <div class="name-opts">${CFG.trip.people.map((n) => `<button data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>
-    <form class="name-other" id="name-form"><input id="name-input" placeholder="Someone else?" maxlength="30" autocomplete="given-name"><button class="btn-primary">OK</button></form>`, { dismissable: false });
+    <p>So the others can tell whose picks are whose. It stays on this phone. No account.</p>
+    <div class="name-opts">${CFG.trip.people.map((n) => `<button data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>`, { dismissable: false });
   const done = (n) => { if (!n) return; store.setName(n); $("#dialog").hidden = true; toast(`Hi ${n}! Tap hearts to save places.`); };
   $("#dialog-card").addEventListener("click", (e) => { const b = e.target.closest("[data-name]"); if (b) done(b.dataset.name); });
-  $("#name-form").addEventListener("submit", (e) => { e.preventDefault(); done($("#name-input").value.trim()); });
 }
 
 function showCredits() {
@@ -411,7 +371,7 @@ $("#open-credits").addEventListener("click", showCredits);
 
 // ---------- trip badge + splash ----------
 function renderBadge() {
-  $("#open-splash").lastChild.textContent = ` Countdown & trip forecast · ${badgeText(CFG)}`;
+  $("#splash-sub").textContent = `${badgeText(CFG)} · weather and sunsets`;
 }
 async function showSplash(after) {
   const el = $("#splash");
@@ -622,7 +582,8 @@ function showScreen(name) {
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-active", x.dataset.screen === name));
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("is-active", s.id === `screen-${name}`));
   if (!$("#place").hidden) closePlace();
-  if (name === "saved") { renderSaved(); renderThemePicker(); renderOffline(); }
+  if (name === "saved") renderSaved();
+  if (name === "more") { renderThemePicker(); renderOffline(); renderBadge(); }
   if (name === "plan") renderPlan();
   if (name === "explore") MAP.map.resize();
 }
@@ -641,39 +602,37 @@ document.addEventListener("click", (e) => {
 function renderSaved() {
   const me = store.get();
   const all = people.all();
-  const m = matches();
-  const tabs = [["mine", `Mine (${me.hearts.filter((id) => BYID[id]).length})`],
-    ...Object.entries(all).map(([n, p]) => [`p:${n}`, `${n}'s (${p.hearts.length})`]),
-    ["matches", `Matches (${m.length})`]];
+  // Just your saved places. Tabs only appear once someone has shared their list with you.
+  const tabs = [["mine", "Mine"], ...Object.keys(all).map((n) => [`p:${n}`, `${n}'s`])];
   if (!tabs.some(([k]) => k === S.savedTab)) S.savedTab = "mine";
+  $("#saved-tabs").hidden = tabs.length < 2;
   $("#saved-tabs").innerHTML = tabs.map(([k, l]) => `<button role="tab" data-saved-tab="${esc(k)}" aria-selected="${k === S.savedTab}">${esc(l)}</button>`).join("");
   const card = (id, badge = "") => { const p = BYID[id].properties; return `<button class="card" data-open-x="${esc(id)}">${thumb(p, { badge })}<div class="card-name">${esc(p.name)}</div><div class="card-sub">${esc(p.area)}</div></button>`; };
   let top = "", ids = [], badgeFor = () => "";
   if (S.savedTab === "mine") {
     ids = me.hearts.filter((id) => BYID[id]);
-    top = `<div class="share-row"><p>Send your picks to the family chat as a link.</p>
-      <button class="btn-pill" id="share-btn">${icon("share", 16)} Share</button></div>`;
+    top = `<section class="share-card">
+        <div class="share-txt"><h2>Share your Istanbul list</h2>
+        <p>Send it to the group. The link opens your picks right here in the app, on the same map, with photos and routes, ready to explore and save from.</p></div>
+        <button class="btn-share" id="share-btn">${icon("share", 18)} Share my list${ids.length ? ` · ${ids.length}` : ""}</button>
+      </section>`;
     const others = Object.entries(all);
     badgeFor = (id) => { const w = others.filter(([, p]) => p.hearts.includes(id)).map(([n]) => n); return w.length ? `${w.join(" & ")} saved this too` : ""; };
-  } else if (S.savedTab === "matches") {
-    ids = m.map((x) => x.id).filter((id) => BYID[id]);
-    top = `<p class="hint">Places saved by two or more of you.</p>`;
-    badgeFor = (id) => m.find((x) => x.id === id).who.join(" · ");
   } else {
     const name = S.savedTab.slice(2), p = all[name];
     ids = p.hearts.filter((id) => BYID[id]);
-    top = `<div class="asof"><span>${esc(name)}'s picks · as of ${fmtAsOf(p.asOf)}</span><button class="link-btn" data-remove-person="${esc(name)}">Remove</button></div>
-      <button class="btn-secondary" data-merge="${esc(name)}">Merge into mine</button>
-      <p class="hint">Snapshots don't update themselves. If ${esc(name)} changes their picks, they share a new link.</p>`;
-    badgeFor = (id) => (store.isHearted(id) ? "You both saved this" : "");
+    top = `<div class="asof"><span>${esc(name)}'s list · shared ${fmtAsOf(p.asOf)}</span><button class="link-btn" data-remove-person="${esc(name)}">Remove</button></div>
+      <button class="btn-secondary" data-merge="${esc(name)}">Add all to mine</button>
+      <p class="hint">If ${esc(name)} changes their list, they just share it again.</p>`;
+    badgeFor = (id) => (store.isHearted(id) ? "You saved this too" : "");
   }
   $("#saved-top").innerHTML = top;
   $("#saved-list").innerHTML = ids.length ? ids.map((id) => card(id, badgeFor(id))).join("")
-    : `<p class="empty">${S.savedTab === "mine" ? "Tap the heart on any place to save it here." : S.savedTab === "matches" ? "No matches yet. Share links with each other to see them." : "Nothing in this snapshot."}</p>`;
+    : `<p class="empty">${S.savedTab === "mine" ? "Tap the heart on any place to save it here." : "Nothing in this list."}</p>`;
   $("#share-btn")?.addEventListener("click", async () => {
     if (!me.hearts.length) return toast("Save a few places first");
     const r = await shareMyPicks();
-    if (r === "copied") toast("Link copied. Paste it in the family chat.");
+    if (r === "copied") toast("Link copied. Paste it in the group chat.");
   });
 }
 $("#screen-saved").addEventListener("click", (e) => {
@@ -904,6 +863,6 @@ store.on(() => { if (MAP) renderMapRoutes(); });
   let seen = false; try { seen = sessionStorage.getItem("oit:splash") === "1"; sessionStorage.setItem("oit:splash", "1"); } catch { /* ignore */ }
   if (!imp && !m && !seen && params.get("splash") !== "0") showSplash(afterSplash); else afterSplash();
   if (editMod) editMod.startEditMode(THEME);
-  getForecast().then(renderRightNow);
+  getForecast();
   if (swReady()) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

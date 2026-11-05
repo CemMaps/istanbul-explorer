@@ -35,7 +35,8 @@ export function buildLink() {
 export async function shareMyPicks() {
   const me = store.get();
   const url = buildLink();
-  const text = `${me.name || "My"} picks for Istanbul (${me.hearts.length} places)`;
+  const who = me.name ? `${me.name}'s` : "My";
+  const text = `${who} Istanbul list: ${me.hearts.length} places. Tap to explore them on the map in Istanbul Explorer, with photos and routes, and save the ones you like.`;
   if (navigator.share) {
     try { await navigator.share({ title: text, text, url }); return "shared"; } catch (e) { if (e.name === "AbortError") return "cancelled"; }
   }

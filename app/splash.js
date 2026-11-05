@@ -55,7 +55,7 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
     const sun = sunTimes(d.date, cfg.map.home);
     const today = m.st.phase === "during" && m.st.today === d.date;
     return `<li class="sp-day ${today ? "is-today" : ""}">
-      <span class="sp-dow">${d.label}</span><span class="sp-date">${fmtDay(d.date)}</span>
+      <span class="sp-dow">${d.label.slice(0, 3)}</span><span class="sp-date">${fmtDay(d.date)}</span>
       ${w ? `${icon(w.icon, 30)}<span class="sp-temp">${w.max}°<small>${w.min}°</small></span><span class="sp-rain">${w.rain}% rain</span>
              <span class="sp-sun">${icon("sunset", 14)}${fmtTime(sun.sunset)}</span>`
           : `${icon("sunset", 30)}<span class="sp-temp">${fmtTime(sun.sunset)}</span><span class="sp-rain">sunset</span>`}</li>`;

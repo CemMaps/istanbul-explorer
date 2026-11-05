@@ -3,7 +3,7 @@
 Re-read this file at the start of every session and keep it current.
 
 ## Goal
-A small, beautiful, phone-only web map for Cem, Lucy and Michelle's Istanbul trip, shared via WhatsApp.
+A small, beautiful, phone-only web map for Cem, Lucy, Michele and Coş's Istanbul trip, shared via WhatsApp.
 Browse photos, heart places, loosely plan each day, and see what's around you during the trip.
 Consumer feel (Airbnb-style), not a GIS analysis tool. Beauty, photos and simplicity beat features.
 Cem tends to overbuild: hold to scope.
@@ -22,7 +22,7 @@ Keep it light; it supports exploring, it is not the main point.
 - Time zone: `Europe/Istanbul`, UTC+3 all year (Turkey has no DST since 2016).
 - Sun (computed, NOAA algorithm, Beyoğlu): sunrise ≈ 08:05–08:09, **sunset ≈ 17:37–17:38** on all four days.
   Golden hour ≈ 16:50–17:37. Mornings are dark-ish until 08:00.
-- People (share-link names): **Cem, Lucy, Michelle**. No kids; everyone walks well.
+- People (share-link names): **Cem, Lucy, Michele, Coş** (fixed list, no free-text name). No kids; everyone walks well.
 - Food: no dietary requirements, but one person avoids red meat and likes vegetarian dishes → food entries flag `veggie_friendly` / fish options.
 
 ## Guardrails

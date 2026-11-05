@@ -93,8 +93,14 @@ export async function createMap({ container, theme, config, data, onPlace }) {
 
   // Mask outside the study area.
   map.addSource("mask", { type: "geojson", data: data.mask });
+  // Frosted-glass look outside: a milky veil in the surface colour (WebGL maps can't blur part of
+  // themselves), plus a soft halo and a very thin grey edge along the study area.
   map.addLayer({ id: "mask", type: "fill", source: "mask",
-    paint: { "fill-color": cssVar("--c-mask"), "fill-opacity": theme.maskOpacity ?? 0.7 } });
+    paint: { "fill-color": cssVar("--c-surface"), "fill-opacity": Math.max(theme.maskOpacity ?? 0.7, 0.78) } });
+  map.addLayer({ id: "mask-halo", type: "line", source: "mask",
+    paint: { "line-color": cssVar("--c-surface"), "line-width": 10, "line-blur": 8, "line-opacity": 0.8, "line-offset": 5 } });
+  map.addLayer({ id: "mask-edge", type: "line", source: "mask",
+    paint: { "line-color": cssVar("--c-ink-2"), "line-width": 0.8, "line-opacity": 0.35 } });
 
   // Vibe map: soft translucent fill under everything, off by default (character or lifestyle colouring).
   map.addSource("areas", { type: "geojson", data: data.areas || { type: "FeatureCollection", features: [] } });

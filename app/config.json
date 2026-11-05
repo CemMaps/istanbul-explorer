@@ -2,12 +2,12 @@
   "trip": {
     "timezone": "Europe/Istanbul",
     "days": [
-      { "id": "fri", "label": "Fri", "date": "2026-11-27", "start": "16:15", "startNote": "Land at SAW" },
-      { "id": "sat", "label": "Sat", "date": "2026-11-28" },
-      { "id": "sun", "label": "Sun", "date": "2026-11-29" },
-      { "id": "mon", "label": "Mon", "date": "2026-11-30", "end": "17:00", "endNote": "Leave for SAW (flight 21:00)" }
+      { "id": "fri", "label": "Friday", "date": "2026-11-27", "start": "16:15", "startNote": "Land at SAW" },
+      { "id": "sat", "label": "Saturday", "date": "2026-11-28" },
+      { "id": "sun", "label": "Sunday", "date": "2026-11-29" },
+      { "id": "mon", "label": "Monday", "date": "2026-11-30", "end": "17:00", "endNote": "Leave for SAW (flight 21:00)" }
     ],
-    "people": ["Cem", "Lucy", "Michelle"]
+    "people": ["Cem", "Lucy", "Michele", "Coş"]
   },
   "map": {
     "center": [28.985, 41.03],

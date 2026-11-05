@@ -28,8 +28,8 @@
   ],
   "tiers": {
     "must-see": { "minzoom": 0, "size": 1.0, "label": "Must-see" },
-    "worth-it": { "minzoom": 12.8, "size": 0.8, "label": "Worth it" },
-    "bonus": { "minzoom": 14.3, "size": 0.62, "label": "Bonus" }
+    "worth-it": { "minzoom": 12.2, "size": 0.8, "label": "Worth it" },
+    "bonus": { "minzoom": 13.6, "size": 0.62, "label": "Bonus" }
   },
   "categories": [
     { "id": "Mosques & churches", "short": "Mosque", "icon": "dome" },
@@ -43,7 +43,7 @@
   "chips": [
     { "id": "all", "label": "All" },
     { "id": "iconic", "label": "Iconic", "match": { "tier": ["must-see"] } },
-    { "id": "views", "label": "Views", "match": { "category": ["Viewpoints"] } },
+    { "id": "views", "label": "Viewpoints", "match": { "category": ["Viewpoints"] } },
     { "id": "mosques", "label": "Mosques", "match": { "category": ["Mosques & churches"] } },
     { "id": "museums", "label": "Palaces & museums", "match": { "category": ["Palaces & museums"] } },
     { "id": "bazaars", "label": "Bazaars", "match": { "category": ["Bazaars & markets"] } },
@@ -51,6 +51,27 @@
     { "id": "parks", "label": "Parks", "match": { "category": ["Parks & waterfront"] } },
     { "id": "areas", "label": "Neighbourhoods", "match": { "category": ["Neighbourhoods"] } }
   ],
+  "vibe": {
+    "file": "../data/areas.geojson",
+    "classes": [
+      { "id": "monumental", "label": "Monumental old city", "short": "Monumental", "feel": "Imperial sights, squares, tour groups" },
+      { "id": "market", "label": "Market & trade", "short": "Market", "feel": "Packed shopping streets by day, quiet at night" },
+      { "id": "conservative", "label": "Conservative local", "short": "Conservative", "feel": "Traditional everyday life, modest dress, little nightlife" },
+      { "id": "bohemian", "label": "Bohemian & creative", "short": "Bohemian", "feel": "Old houses, cafés, galleries" },
+      { "id": "nightlife", "label": "Nightlife & youth", "short": "Nightlife", "feel": "Bars, music, late nights" },
+      { "id": "village", "label": "Bosphorus village", "short": "Bosphorus village", "feel": "Waterfront, tea gardens, wooden houses" },
+      { "id": "upmarket", "label": "Modern & upmarket", "short": "Upmarket", "feel": "Brands, towers, smart cafés" },
+      { "id": "working", "label": "Working-class inner city", "short": "Inner city", "feel": "Dense, busy, real local life" },
+      { "id": "residential", "label": "Everyday residential", "short": "Residential", "feel": "Ordinary apartment streets" },
+      { "id": "green", "label": "Green & open", "short": "Green", "feel": "Parks, woods, hillsides" }
+    ],
+    "lifestyles": [
+      { "id": "cosmopolitan", "label": "Cosmopolitan", "feel": "Bars and meyhanes everywhere, relaxed dress, late nights" },
+      { "id": "mixed", "label": "Mixed", "feel": "Mosques and meyhanes side by side" },
+      { "id": "traditional", "label": "Traditional", "feel": "Little or no alcohol, modest dress common, quiet evenings" }
+    ]
+  },
+  "routes": { "max": 5, "router": "https://routing.openstreetmap.de/routed-foot/route/v1/driving/", "walkMps": 1.3 },
   "dimOpacity": 0.25,
   "gettingThere": { "maxWalkM": 900, "metersPerMin": 80 }
 }

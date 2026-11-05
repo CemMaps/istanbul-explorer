@@ -28,7 +28,6 @@
           <span data-icon="search"></span>
           <input id="search" type="search" placeholder="Search anything" autocomplete="off" enterkeyhint="search" aria-label="Search places, areas, food">
           <button id="search-clear" class="icon-btn small" hidden aria-label="Clear search"><span data-icon="close"></span></button>
-          <button id="trip-badge" class="trip-badge" aria-label="Trip countdown and forecast"><img id="logo" class="logo" alt="" hidden><span id="trip-badge-txt">–</span></button>
         </div>
         <div id="chips" class="chips" role="toolbar" aria-label="Filters"></div>
       </div>
@@ -36,8 +35,14 @@
       <div id="map" class="map" aria-label="Map"></div>
       <div class="map-buttons">
         <button id="btn-near" class="fab" aria-label="Near me"><span data-icon="locate"></span></button>
-        <button id="btn-home" class="fab" aria-label="Centre on our flat"><span data-icon="home"></span></button>
+        <button id="btn-here" class="fab" aria-label="What's here? Tap, then tap the map" aria-pressed="false"><span data-icon="here"></span></button>
+        <button id="btn-vibe" class="fab" aria-label="Vibe map" aria-pressed="false"><span data-icon="layers"></span></button>
       </div>
+      <button id="btn-home" class="fab fab-home" aria-label="Centre on our flat"><span data-icon="home"></span></button>
+      <div id="here-hint" class="map-hint" hidden>Tap anywhere on the map</div>
+      <div id="vibe-legend" class="vibe-legend" hidden></div>
+      <div id="plans-legend" class="plans-legend" hidden></div>
+      <div class="map-credit" aria-hidden="true">© OpenStreetMap · © CARTO</div>
 
       <section id="sheet" class="sheet" data-state="peek" aria-label="Places in view">
         <button class="sheet-handle" id="sheet-handle" aria-label="Drag or tap to resize the list"><span></span></button>
@@ -62,6 +67,7 @@
         <div id="saved-top"></div>
         <div id="saved-list" class="saved-grid"></div>
         <section class="settings" aria-label="Settings">
+          <button id="open-splash" class="btn-secondary"><span data-icon="sun"></span> Countdown &amp; trip forecast</button>
           <h2 class="settings-title"><span data-icon="palette"></span> Look</h2>
           <div id="theme-picker" class="theme-picker" role="radiogroup" aria-label="App look"></div>
           <h2 class="settings-title"><span data-icon="offline"></span> Offline</h2>
@@ -72,18 +78,18 @@
     </section>
 
     <!-- Plan -->
-    <section id="screen-plan" class="screen" aria-label="Plan">
-      <div class="page">
-        <div class="plan-head">
-          <h1 class="page-title" id="plan-title">Our plan</h1>
-          <select id="plan-who" class="who" aria-label="Whose plan"></select>
+    <section id="screen-plan" class="screen" aria-label="Routes">
+      <div class="page routes-page">
+        <div id="plan-tabs" class="day-tabs" role="tablist" aria-label="Day"></div>
+        <div class="route-map-wrap">
+          <div id="route-map" class="route-map" aria-label="Route map"></div>
+          <div id="route-map-empty" class="route-map-empty" hidden></div>
         </div>
-        <div id="plan-tabs" class="day-tabs" role="tablist"></div>
-        <div id="plan-weather"></div>
-        <div id="plan-mode" class="seg two" role="tablist">
-          <button role="tab" data-mode="added">As added</button>
-          <button role="tab" data-mode="suggested"><span data-icon="sparkle"></span> Suggested</button>
+        <div class="route-bar">
+          <div id="route-chips" class="route-chips" role="tablist" aria-label="Routes for this day"></div>
+          <select id="plan-who" class="who" aria-label="Whose routes"></select>
         </div>
+        <div id="route-tools" class="route-tools"></div>
         <div id="plan-body" class="timeline"></div>
         <div id="plan-tray"></div>
       </div>
@@ -101,7 +107,7 @@
     <nav class="tabbar" aria-label="Main">
       <button class="tab is-active" data-screen="explore"><span data-icon="compass"></span><span>Explore</span></button>
       <button class="tab" data-screen="saved"><span data-icon="heart"></span><span>Saved</span></button>
-      <button class="tab" data-screen="plan"><span data-icon="calendar"></span><span>Plan</span></button>
+      <button class="tab" data-screen="plan"><span data-icon="route"></span><span>Routes</span></button>
     </nav>
 
     <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>

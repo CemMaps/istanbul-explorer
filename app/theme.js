@@ -32,6 +32,9 @@ export function applyTheme(t) {
   for (const [k, v] of Object.entries(t.categories)) root.setProperty(`--cat-${slug(k)}`, v);
   for (const [k, v] of Object.entries(t.routes)) root.setProperty(`--route-${k}`, v);
   for (const [k, v] of Object.entries(t.transit)) root.setProperty(`--transit-${k}`, v);
+  for (const [k, v] of Object.entries(t.vibe || {})) root.setProperty(`--vibe-${k}`, v);
+  for (const [k, v] of Object.entries(t.lifestyle || {})) root.setProperty(`--life-${k}`, v);
+  (t.routeColors || []).forEach((v, i) => root.setProperty(`--rc-${i}`, v));
   root.setProperty("--font-heading", `"${t.fonts.heading}", system-ui, sans-serif`);
   root.setProperty("--font-body", `"${t.fonts.body}", system-ui, sans-serif`);
   root.setProperty("--radius", `${t.radius}px`);

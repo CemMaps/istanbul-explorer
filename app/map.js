@@ -11,13 +11,60 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)
 const FONT_REG = ["Montserrat Regular", "Open Sans Regular"];
 const FONT_BOLD = ["Montserrat Medium", "Open Sans Semibold"];
 
+// ----- route lines + numbered stops (shared by the main map and the Routes mini-map) -----
+function addRouteLayers(map, bg) {
+  const empty = { type: "FeatureCollection", features: [] };
+  map.addSource("route-lines", { type: "geojson", data: empty });
+  map.addSource("route-stops", { type: "geojson", data: empty });
+  map.addLayer({ id: "route-casing", type: "line", source: "route-lines", layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": bg, "line-width": ["interpolate", ["linear"], ["zoom"], 11, 5, 16, 9], "line-opacity": 0.9 } });
+  map.addLayer({ id: "route-line", type: "line", source: "route-lines", filter: ["in", ["get", "mode"], ["literal", ["walk", "taxi"]]],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ["get", "color"], "line-width": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 16, 5] } });
+  map.addLayer({ id: "route-line-dash", type: "line", source: "route-lines", filter: ["!", ["in", ["get", "mode"], ["literal", ["walk", "taxi"]]]],
+    layout: { "line-cap": "round", "line-join": "round" },
+    paint: { "line-color": ["get", "color"], "line-width": ["interpolate", ["linear"], ["zoom"], 11, 2.5, 16, 5], "line-dasharray": [1.2, 1.6] } });
+  map.addLayer({ id: "route-stop", type: "circle", source: "route-stops",
+    paint: { "circle-radius": ["case", ["get", "start"], 9, 11], "circle-color": ["case", ["get", "start"], bg, ["get", "color"]],
+             "circle-stroke-color": ["case", ["get", "start"], ["get", "color"], bg], "circle-stroke-width": ["case", ["get", "start"], 3, 2.5] } });
+  map.addLayer({ id: "route-stop-num", type: "symbol", source: "route-stops",
+    layout: { "text-field": ["get", "label"], "text-font": FONT_BOLD, "text-size": 12, "text-allow-overlap": true, "text-ignore-placement": true },
+    paint: { "text-color": ["case", ["get", "start"], ["get", "color"], bg] } });
+}
+function setRouteData(map, lines, stops) {
+  map.getSource("route-lines").setData(lines);
+  map.getSource("route-stops").setData(stops);
+}
+
+function recolour(map, theme) {
+  if (theme.basemap === "dark") return;
+  for (const l of map.getStyle().layers) {
+    if (l.type === "background") map.setPaintProperty(l.id, "background-color", cssVar("--c-map-land"));
+    else if (l.type === "fill" && /water/.test(l.id)) map.setPaintProperty(l.id, "fill-color", cssVar("--c-map-water"));
+    else if (l.type === "fill" && /park|landcover|wood|grass/.test(l.id)) map.setPaintProperty(l.id, "fill-color", cssVar("--c-map-park"));
+  }
+}
+
+// Small map for the Routes screen: basemap + the selected route only.
+export async function createMiniMap({ container, theme, config }) {
+  const map = new maplibregl.Map({
+    container, style: BASEMAPS[theme.basemap] || BASEMAPS.positron, center: config.map.home, zoom: 13,
+    attributionControl: false, pitchWithRotate: false, dragRotate: false,
+  });
+  map.touchZoomRotate.disableRotation();
+  await new Promise((r) => map.on("load", r));
+  recolour(map, theme);
+  addRouteLayers(map, cssVar("--c-surface"));
+  return { map, setRoutes: (lines, stops) => setRouteData(map, lines, stops) };
+}
+
 export async function createMap({ container, theme, config, data, onPlace }) {
   const map = new maplibregl.Map({
     container,
     style: BASEMAPS[theme.basemap] || BASEMAPS.positron,
     center: config.map.center, zoom: config.map.zoom,
     minZoom: config.map.minZoom, maxZoom: config.map.maxZoom,
-    attributionControl: { compact: true },
+    attributionControl: false, // credit shown as a small line on the map + full credits screen (see app.js)
     pitchWithRotate: false, dragRotate: false,
   });
   map.touchZoomRotate.disableRotation();
@@ -48,6 +95,15 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   map.addSource("mask", { type: "geojson", data: data.mask });
   map.addLayer({ id: "mask", type: "fill", source: "mask",
     paint: { "fill-color": cssVar("--c-mask"), "fill-opacity": theme.maskOpacity ?? 0.7 } });
+
+  // Vibe map: soft translucent fill under everything, off by default (character or lifestyle colouring).
+  map.addSource("areas", { type: "geojson", data: data.areas || { type: "FeatureCollection", features: [] } });
+  const vibeColor = ["match", ["get", "primary"], ...config.vibe.classes.flatMap((c) => [c.id, cssVar(`--vibe-${c.id}`)]), cssVar("--c-ink-2")];
+  const lifeColor = ["match", ["get", "lifestyle"], ...config.vibe.lifestyles.flatMap((l) => [l.id, cssVar(`--life-${l.id}`)]), cssVar("--c-ink-2")];
+  map.addLayer({ id: "vibe-fill", type: "fill", source: "areas", layout: { visibility: "none" },
+    paint: { "fill-color": vibeColor, "fill-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.42, 15, 0.26] } });
+  map.addLayer({ id: "vibe-line", type: "line", source: "areas", layout: { visibility: "none" },
+    paint: { "line-color": bg, "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.4, 15, 1.4], "line-opacity": 0.8 } });
 
   // Ferries
   map.addSource("ferries", { type: "geojson", data: data.ferries });
@@ -82,10 +138,11 @@ export async function createMap({ container, theme, config, data, onPlace }) {
       filter: ["all", ["==", ["get", "tier"], tier], ["!=", ["get", "asLabel"], true]],
       paint: {
         "circle-color": catColor,
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], from, tier === "bonus" ? 1.6 : 2.2, to, tier === "bonus" ? 3 : 3.8],
+        // Three clear sizes: must-see dots biggest, bonus smallest; they grow gently as you zoom in.
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], from, { "must-see": 4, "worth-it": 2.6, bonus: 1.8 }[tier], to + 1, { "must-see": 5, "worth-it": 3.8, bonus: 3 }[tier]],
         "circle-stroke-color": bg, "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], from, 0.6, to, 1.2],
-        "circle-opacity": ["case", ["get", "dim"], config.dimOpacity * 0.6, tier === "bonus" ? 0.75 : 0.9],
-        "circle-stroke-opacity": ["case", ["get", "dim"], 0.2, 1],
+        "circle-opacity": tier === "bonus" ? 0.7 : 0.95,
+        "circle-stroke-opacity": 1,
       } });
     dotLayers.push(`dots-${tier}`);
   }
@@ -98,9 +155,10 @@ export async function createMap({ container, theme, config, data, onPlace }) {
       filter: ["all", isTier, notLabelCat],
       layout: {
         "icon-image": ["concat", "pin-", ["get", "catslug"]],
-        "icon-size": ["interpolate", ["linear"], ["zoom"], 10, t.size * 0.62, 14, t.size * 0.82, 17, t.size],
-        // Collisions on: at city zoom the most famous pins win instead of piling up.
-        "icon-allow-overlap": false, "icon-padding": 1,
+        // Small at city zoom so more icons fit; collisions on, so the most famous win instead of piling up
+        // (a hidden icon still shows as its dot underneath).
+        "icon-size": ["interpolate", ["linear"], ["zoom"], 10, t.size * 0.48, 12, t.size * 0.6, 14, t.size * 0.8, 17, t.size],
+        "icon-allow-overlap": false, "icon-padding": 0,
         "symbol-sort-key": ["-", 0, ["get", "score"]],
         "text-field": ["step", ["zoom"], "", labelFrom, ["get", "name"]],
         "text-font": tier === "must-see" ? FONT_BOLD : FONT_REG, "text-size": tier === "must-see" ? 12.5 : 11.5,
@@ -132,10 +190,23 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   // Fixed points: the flat + airport
   map.addSource("fixed", { type: "geojson", data: data.fixed });
   map.addLayer({ id: "fixed", type: "symbol", source: "fixed",
-    layout: { "icon-image": ["match", ["get", "kind"], "home", "pin-home", "pin-airport"], "icon-size": 0.85, "icon-allow-overlap": true,
+    layout: { "icon-image": ["match", ["get", "kind"], "home", "pin-home", "pin-airport"], "icon-allow-overlap": true,
+              // same size as a must-see pin
+              "icon-size": ["interpolate", ["linear"], ["zoom"], 10, config.tiers["must-see"].size * 0.62, 14, config.tiers["must-see"].size * 0.82, 17, config.tiers["must-see"].size],
               "text-field": ["step", ["zoom"], "", 13, ["get", "name"]], "text-font": FONT_BOLD, "text-size": 11.5,
               "text-offset": [0, 1.4], "text-anchor": "top", "text-optional": true },
     paint: { "text-color": navy, "text-halo-color": bg, "text-halo-width": 1.4 } });
+
+  addRouteLayers(map, bg);
+
+  // "What's here" marker + radius ring
+  map.addSource("here", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({ id: "here-ring", type: "fill", source: "here", filter: ["==", ["geometry-type"], "Polygon"],
+    paint: { "fill-color": cssVar("--c-primary"), "fill-opacity": 0.12 } });
+  map.addLayer({ id: "here-ring-line", type: "line", source: "here", filter: ["==", ["geometry-type"], "Polygon"],
+    paint: { "line-color": cssVar("--c-primary"), "line-width": 2.5, "line-dasharray": [2, 1.5], "line-opacity": 0.9 } });
+  map.addLayer({ id: "here-pt", type: "circle", source: "here", filter: ["==", ["geometry-type"], "Point"],
+    paint: { "circle-radius": 8, "circle-color": navy, "circle-stroke-color": bg, "circle-stroke-width": 3 } });
 
   // You-are-here
   map.addSource("me", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -168,16 +239,35 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     map,
     // While a filter/search is active, matching places show at every zoom (so "zoom to results" works);
     // non-matching lesser places are hidden rather than dimmed, so the zoomed-out map stays readable.
+    // Non-matching places disappear completely (Cem, 2026-11-05: hide, don't dim).
     showAllTiers(on) {
       for (const [id, z] of Object.entries(tierZoom)) {
-        const lesser = !id.endsWith("must-see");
         map.setLayerZoomRange(id, on ? 0 : z, 24);
-        map.setFilter(id, on && lesser ? ["all", baseFilter[id], ["!", ["get", "dim"]]] : baseFilter[id]);
+        map.setFilter(id, on ? ["all", baseFilter[id], ["!", ["get", "dim"]]] : baseFilter[id]);
       }
       for (const id of dotLayers) {
         map.setLayerZoomRange(id, on ? 0 : dotZoom[id], 24);
         map.setFilter(id, on ? ["all", dotFilter[id], ["!", ["get", "dim"]]] : dotFilter[id]);
       }
+    },
+    setVibe(mode) { // null | "character" | "lifestyle"
+      for (const id of ["vibe-fill", "vibe-line"]) map.setLayoutProperty(id, "visibility", mode ? "visible" : "none");
+      if (mode) map.setPaintProperty("vibe-fill", "fill-color", mode === "lifestyle" ? lifeColor : vibeColor);
+    },
+    vibeAt: (pt) => map.queryRenderedFeatures(pt, { layers: ["vibe-fill"] })[0]?.properties,
+    setRoutes: (lines, stops) => setRouteData(map, lines, stops),
+    setHere(c, radiusM) {
+      const feats = [];
+      if (c) {
+        const ring = [];
+        for (let i = 0; i <= 48; i++) {
+          const a = (i / 48) * 2 * Math.PI;
+          ring.push([c[0] + (radiusM / 84000) * Math.cos(a), c[1] + (radiusM / 111100) * Math.sin(a)]);
+        }
+        feats.push({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } },
+                   { type: "Feature", properties: {}, geometry: { type: "Point", coordinates: c } });
+      }
+      map.getSource("here").setData({ type: "FeatureCollection", features: feats });
     },
     setPlaces: (fc) => map.getSource("places").setData(fc),
     select: (id) => map.setFilter("selected", ["==", ["get", "id"], id || ""]),

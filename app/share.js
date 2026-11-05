@@ -25,7 +25,7 @@ export const people = { all: readPeople, get: (n) => readPeople()[n] };
 
 export function buildLink() {
   const me = store.get();
-  const codes = me.hearts.map((id) => codeOf(id) + (DAY_IDS.indexOf(me.days[id]) + 1));
+  const codes = me.hearts.map((id) => codeOf(id) + (DAY_IDS.indexOf(store.dayOf(id)) + 1));
   const payload = `from=${encodeURIComponent(me.name || "Someone")}&t=${Date.now().toString(36)}&p=${codes.join(".")}`;
   const base = location.origin + location.pathname;
   if (payload.length > 1200 && window.LZString) return `${base}#z=${window.LZString.compressToEncodedURIComponent(payload)}`;

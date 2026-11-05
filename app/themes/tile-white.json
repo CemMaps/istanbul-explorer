@@ -61,5 +61,29 @@
   "shadow": 0.08,
   "basemap": "positron",
   "pinStyle": "filled",
-  "maskOpacity": 0.75
+  "maskOpacity": 0.75,
+  "vibe": {
+    "monumental": "#B5651D",
+    "market": "#C9971A",
+    "conservative": "#2E7D6B",
+    "bohemian": "#8E4FA8",
+    "nightlife": "#D6336C",
+    "village": "#1C8FB3",
+    "upmarket": "#3D5A99",
+    "working": "#8C6D5A",
+    "residential": "#A8A39A",
+    "green": "#7FA86B"
+  },
+  "lifestyle": {
+    "cosmopolitan": "#2B7BB9",
+    "mixed": "#C9C3B8",
+    "traditional": "#C7802A"
+  },
+  "routeColors": [
+    "#E4572E",
+    "#1F4FA3",
+    "#2E9E5B",
+    "#9B3FB5",
+    "#E0A100"
+  ]
 }

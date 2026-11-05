@@ -26,7 +26,7 @@ Keep it light; it supports exploring, it is not the main point.
 - Food: no dietary requirements, but one person avoids red meat and likes vegetarian dishes → food entries flag `veggie_friendly` / fish options.
 
 ## Guardrails
-- Phone only, 360–430 px. Wider screens: same layout centred at ~430 px. No desktop/tablet layout.
+- Phone only, 360–430 px. Wider screens: same layout, filling up to 600 px (no fake phone frame). No desktop/tablet layout.
 - Static site, no backend, no accounts, no database. Plain HTML/CSS/JS, CDN libs pinned to exact versions. No bundler without asking.
 - MapLibre GL JS + free keyless light basemap (CARTO Positron/Voyager) with attribution. Style needs a `glyphs` URL.
 - No Google data in the dataset. Google = "Open in Google Maps" link only (`https://www.google.com/maps/search/?api=1&query=<lat>,<lng>`).
@@ -56,7 +56,10 @@ Ignore all other skills, plugins and MCP tools. Built-in browser pane OK for pho
 | "Vibe" | Means the **character / texture of the area** (see Area character). Shown as an optional **Vibe map** layer. |
 | Lines | **Walks**, **boat trips** (cruises) and **ferry lines** (transport, so you can see where a boat helps). |
 | Getting there | Short per-place line: nearest metro/tram/funicular/ferry stop, walk distance, line name; "Taxi is easiest" when nothing is close. |
-| Filters | Non-matching pins dim to ~25%. Try first, revisit. |
+| Filters | Non-matching places **disappear** (changed 2026-11-05, Cem: "hide, don't dim"). "All places" chip becomes a "✕ Show all" reset when a filter/search is on. Chip label "Viewpoints". |
+| Routes (replaces Plan, 2026-11-05) | Tab "Routes". A route = places added to a day; app orders them nearest-first from the start (our flat by default, "Start:" picker) with nearest-neighbour + 2-opt. No times, weather, fixed arrival/airport stops or "As added". Between stops only the mode: "Walk · N min", Tram/Metro/Ferry, or Taxi (`routes.js` `legMode`). Up to 3 alternative routes per day, each its own colour (5 route colours in theme). "On map" switch shows up to 5 routes on Explore with a legend. Lines follow streets via the keyless FOSSGIS OSRM foot router (`routing.openstreetmap.de/routed-foot`, cached in localStorage) and ferry lines for ferry legs. Mini map on the Routes screen. Tray: "Saved, not in a route yet". |
+| What's here | Button under My location: tap it, tap the map → 900 m circle, the neighbourhood (nearest mahalle), its vibe words + feel, and the best places inside ranked by tier, score, distance. |
+| Map chrome | No MapLibre "i" attribution button: small text credit bottom-left. Home button bottom-right. App fills up to 600 px wide (no fake phone frame). Share button on every place card (`#place=<id>` link) and on Routes. |
 | Turkish names | Yes: small second line under the English name. |
 | Palette & fonts | Keep: navy #14213D, Iznik cobalt #1F4FA3, pomegranate #C4462E, map ground #EEEBE3. Font: **Figtree** (changed 2026-11-05 at Cem's request: "a font better for an application"; Geist offered as option). All in `app/themes/`. |
 | Theme presets | 5 presets (Iznik Navy, Bosphorus at Night, Tea & Simit, Tile White, Gül). **Everyone can pick** one on the Saved screen ("Look"); `?edit=1` is the full editor. |
@@ -150,6 +153,9 @@ Line layers: Walks · Boat trips · Ferry lines. Area layer: Vibe map. Fixed: th
 `data/areas.geojson`: merged character areas: `primary`, `secondary`, `lifestyle`, `mahalles`, `evidence`, `notes`.
 Places also get `getting_there`: [{stop, mode, lines, walk_m}] (computed) + optional `getting_there_note`.
 `data/fixed.geojson`: the flat, SAW airport.
+Places also carry `mahalle` (containing or nearest OSM mahalle) and `lifestyle`, both from `07_areas.py`.
+Saved state (localStorage `oit:v1:me`): `{name, hearts, routes:[{id, day, name, ids, start:"home"|placeId, onMap, ci}], active:{day: routeId}, addedAt}`;
+old `days` maps migrate into one route per day.
 `data/study_area.geojson`: Bosphorus-centred study polygon for QA outlier checks.
 
 Score = sitelinks + log 12-month EN pageviews + Wikivoyage "See" presence, sanity-checked by judgement (flag gaps ≥ 2 points).
@@ -159,8 +165,10 @@ Prominence on the map: `must-see` shows from low zoom; `worth-it` mid zoom; `bon
 - [x] Phase 0 — setup, questions, CLAUDE.md, scaffold, git init
 - [~] Phase 1 — research & data. Done: study area (4 km band from the water, data-chosen), OSM mahalles/ferries/stops,
       Wikidata candidates (670 places, provisional tiers), coverage + bias check, overrides.json.
-      To do: 12-month pageviews (rate-limited, see lessons), area character + lifestyle classification, Overture cross-check,
-      food places, more photos + credits, own-words blurbs, best_time/indoor, walks, boat trips.
+      Done 2026-11-05: photos (1,335 with credits, `05_photos.py`), Overture 2026-10-21.0 places (`06_overture.py`, 172k POIs),
+      area character + lifestyle for 305 mahalles → 123 areas (`07_areas.py`, rules + reasoned overrides, evidence in
+      `data/mahalle_character.csv` for Cem to review). Run order 04 → 05 → 07 (restore `data/raw/places_before_07.geojson` before re-running 07).
+      To do: 12-month pageviews (rate-limited, see lessons), food places, own-words blurbs, best_time/indoor, walks, boat trips.
 - [ ] Phase 2 — QA script + `qa/index.html` 🛑 Cem reviews (`qa/preview.html` is a quick data map for now)
 - [~] Phase 3 — started early at Cem's request (2026-11-05), on provisional data: theme tokens, config-driven layers,
       Explore (countdown, forecast panel, search, chips, tiered pins, mask, shore badge, near me/home, sheet, Right now),
@@ -172,6 +180,8 @@ Prominence on the map: `must-see` shows from low zoom; `worth-it` mid zoom; `bon
       fixed Fri arrival / Mon airport stops, tray of unplanned saves, read-only view of others' snapshots),
       Saved & share (`share.js`: compact `#from=…&p=` links, lz fallback, Mine / per-person / Matches, merge, remove),
       Right now uses live weather during the trip. 🛑 Cem tests on phone
+      2026-11-05: Plan rebuilt as **Routes** (see Decisions; `plan.js` removed, `routes.js` added), Vibe map toggle + legend,
+      What's here, share on place cards. Tested at 375×812 in the preview.
 - [~] Phase 5 — built: 5 presets in `app/themes/`, `?edit=1` editor (`edit.js`: preset, name, logo, fonts, corners, colours
       with contrast check, basemap, pins, sample-forecast toggle, save locally / export theme.json), credits screen,
       offline `sw.js` (https only). To do: a11y pass, loading/empty polish, deploy.
@@ -195,4 +205,11 @@ Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrase
   Wikidata P18 file names arrive URL-encoded (`%20`); decode before `encodeURIComponent` or every link breaks.
 - **Study area smoothing can drop real sights** (2026-11-05): an open (erode/dilate) of 1.5 km+ cut off Yedikule and the
   Golden Gate. After changing `CLOSE_M`/`OPEN_M`, check no place in places.geojson falls outside (v2: close 4 km, open 1 km).
+- **Overture 2026 schema dropped `categories`** (2026-11-05): DuckDB BinderException. Use `taxonomy.primary`,
+  `taxonomy.hierarchy`, `basic_category`, `operating_status`; mosques are `muslim_place_of_worship`.
+- **FOSSGIS foot router path says "driving"** (2026-11-05): `https://routing.openstreetmap.de/routed-foot/route/v1/driving/lon,lat;lon,lat?overview=simplified&geometries=geojson`.
+  The server picks the profile; the path segment stays `driving`. Keyless, CORS `*`; cache results and be gentle.
+- **Map padding moves the "centre"** (2026-11-05): with the bottom sheet, `easeTo({offset})` lands in the wrong place.
+  Pass `padding` for the panel that will cover the map, then restore with `setSheet(S.sheet)`.
+- **Service worker serves stale JS in the preview** (2026-11-05): unregister + clear caches, and bump `VERSION` in `sw.js` when files change.
 - **data.ibb.gov.tr timed out from here** (2026-11-05): Istanbul's open-data portal may block non-Turkish IPs; don't depend on it.

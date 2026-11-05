@@ -178,7 +178,7 @@ function renderRightNow() {
   if (!pick) { el.hidden = true; return; }
   el.hidden = false;
   el.dataset.open = pick.p.id;
-  el.innerHTML = `<span class="rn-ico">${icon(ico, 22)}</span><span class="rn-txt"><small>Right now${status.phase === "before" ? " · preview" : ""}</small><b>${esc(head)}</b><small>${esc(reason)}</small></span>${icon("chevronRight", 20)}`;
+  el.innerHTML = `<span class="rn-ico">${icon(ico, 22)}</span><span class="rn-txt"><small>${status.phase === "before" ? "If you were there right now" : "Right now"}</small><b>${esc(head)}</b><small>${esc(reason)}</small></span>${icon("chevronRight", 20)}`;
 }
 
 // ---------- bottom sheet: closed / peek / open ----------
@@ -511,21 +511,45 @@ $("#btn-near").addEventListener("click", () => {
 });
 
 // ---------- Vibe map: off → Character → Lifestyle → off ----------
+// Tap a legend row to show only that kind of area (tap more to add; "Show all" clears).
+S.vibeOnly = [];
 function renderVibeLegend() {
   const el = $("#vibe-legend");
   if (!S.vibe) { el.hidden = true; return; }
-  const items = S.vibe === "lifestyle"
-    ? CFG.vibe.lifestyles.map((l) => `<li><i style="background: var(--life-${l.id})"></i>${esc(l.label)}</li>`)
-    : CFG.vibe.classes.map((c) => `<li><i style="background: var(--vibe-${c.id})"></i>${esc(c.short)}</li>`);
-  el.innerHTML = `<div class="vl-head"><b>${S.vibe === "lifestyle" ? "Lifestyle" : "Area character"}</b>
-      <button class="link-btn" id="vibe-switch">${S.vibe === "lifestyle" ? "Show character" : "Show lifestyle"}</button></div>
-    <ul>${items.join("")}</ul>`;
+  const life = S.vibe === "lifestyle";
+  const rows = life ? CFG.vibe.lifestyles.map((l) => [l.id, l.label, `--life-${l.id}`]) : CFG.vibe.classes.map((c) => [c.id, c.short, `--vibe-${c.id}`]);
+  const any = S.vibeOnly.length > 0;
+  el.innerHTML = `<div class="vl-seg" role="tablist">
+      <button role="tab" data-vmode="character" aria-selected="${!life}">Character</button>
+      <button role="tab" data-vmode="lifestyle" aria-selected="${life}">Lifestyle</button></div>
+    <ul>${rows.map(([id, label, v]) => `<li><button data-vonly="${id}" aria-pressed="${S.vibeOnly.includes(id)}" class="${any && !S.vibeOnly.includes(id) ? "is-off" : ""}">
+      <i style="background: var(${v})"></i>${esc(label)}</button></li>`).join("")}</ul>
+    ${any ? `<button class="link-btn vl-all" data-vonly="">Show all</button>` : `<p class="vl-tip">Tap one to show only those</p>`}`;
   el.hidden = false;
-  $("#vibe-switch").onclick = () => setVibe(S.vibe === "lifestyle" ? "character" : "lifestyle");
+}
+$("#vibe-legend").addEventListener("click", (e) => {
+  const m = e.target.closest("[data-vmode]");
+  if (m) { S.vibeOnly = []; return setVibe(m.dataset.vmode); }
+  const o = e.target.closest("[data-vonly]");
+  if (!o) return;
+  const id = o.dataset.vonly;
+  S.vibeOnly = !id ? [] : S.vibeOnly.includes(id) ? S.vibeOnly.filter((x) => x !== id) : [...S.vibeOnly, id];
+  MAP.setVibe(S.vibe, S.vibeOnly);
+  renderVibeLegend();
+});
+// With the vibe map on, a tap on an area (not on a place) says what it's like.
+function vibeTap(e) {
+  if (!S.vibe || S.here) return;
+  if (MAP.map.queryRenderedFeatures(e.point).some((f) => ["places", "fixed"].includes(f.source))) return;
+  const a = areaAt([e.lngLat.lng, e.lngLat.lat]);
+  if (!a) return;
+  const cls = vibeCls(a.primary);
+  toast(`${vibeWords(a.primary, a.secondary, a.lifestyle)}. ${cls?.feel || ""}`);
 }
 function setVibe(mode) {
+  if (!mode) S.vibeOnly = [];
   S.vibe = mode;
-  MAP.setVibe(mode);
+  MAP.setVibe(mode, S.vibeOnly);
   $("#btn-vibe").classList.toggle("is-on", !!mode);
   $("#btn-vibe").setAttribute("aria-pressed", !!mode);
   renderVibeLegend();
@@ -553,7 +577,7 @@ function areaAt(c) {
     return g && (g.type === "Polygon" ? inPoly(g.coordinates) : g.type === "MultiPolygon" && g.coordinates.some(inPoly)); })?.properties || null;
 }
 function onMapClick(e) {
-  if (!S.here) return;
+  if (!S.here) return vibeTap(e);
   const c = [e.lngLat.lng, e.lngLat.lat];
   MAP.setHere(c, HERE_M);
   // Keep the spot and its circle visible above the results panel.
@@ -627,8 +651,8 @@ function renderSaved() {
   let top = "", ids = [], badgeFor = () => "";
   if (S.savedTab === "mine") {
     ids = me.hearts.filter((id) => BYID[id]);
-    top = `<button class="btn-primary" id="share-btn">${icon("share", 20)} Share my picks</button>
-      <p class="hint">Makes a link for the family chat. No accounts, nothing stored on a server.</p>`;
+    top = `<div class="share-row"><p>Send your picks to the family chat as a link.</p>
+      <button class="btn-pill" id="share-btn">${icon("share", 16)} Share</button></div>`;
     const others = Object.entries(all);
     badgeFor = (id) => { const w = others.filter(([, p]) => p.hearts.includes(id)).map(([n]) => n); return w.length ? `${w.join(" & ")} saved this too` : ""; };
   } else if (S.savedTab === "matches") {
@@ -737,13 +761,13 @@ async function renderPlan() {
     $("#plan-tray").innerHTML = ""; showMini(null); return;
   }
   const { st: start, seq } = ordered(r);
-  const startOpts = [["home", "Start: our flat"], ...r.ids.filter((id) => BYID[id]).map((id) => [id, `Start: ${BYID[id].properties.name}`])];
+  const startOpts = [["home", "Our flat"], ...r.ids.filter((id) => BYID[id]).map((id) => [id, BYID[id].properties.name])];
   $("#route-tools").innerHTML = `
-    <label class="start-pick" aria-label="Where this route starts">${icon("pin", 18)}
+    <label class="start-pick" aria-label="Where this route starts"><span class="sp-lbl">${icon("pin", 16)}From</span>${icon("chevDown", 16)}
       <select id="route-start" ${mine ? "" : "disabled"}>${startOpts.map(([k, l]) => `<option value="${esc(k)}" ${(r.start || "home") === k ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
     ${mine ? `<label class="switch"><input type="checkbox" id="route-onmap" ${r.onMap ? "checked" : ""}><span class="sw"></span>On map</label>
       <button class="icon-btn small" id="route-share" aria-label="Share my routes and picks">${icon("share", 18)}</button>
-      <button class="icon-btn small" id="route-more" aria-label="Rename or delete ${esc(r.name)}">${icon("label", 18)}</button>` : ""}`;
+      <button class="icon-btn small" id="route-more" aria-label="Rename or delete ${esc(r.name)}">${icon("more", 20)}</button>` : ""}`;
 
   const legRow = (a, b) => { const m = legMode(a, b, STOPS.features);
     return `<div class="leg leg-${m.mode}">${icon(LEG_ICON[m.mode], 16)}<span>${esc(m.label)}</span></div>`; };

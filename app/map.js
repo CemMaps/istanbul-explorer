@@ -250,8 +250,9 @@ export async function createMap({ container, theme, config, data, onPlace }) {
         map.setFilter(id, on ? ["all", dotFilter[id], ["!", ["get", "dim"]]] : dotFilter[id]);
       }
     },
-    setVibe(mode) { // null | "character" | "lifestyle"
-      for (const id of ["vibe-fill", "vibe-line"]) map.setLayoutProperty(id, "visibility", mode ? "visible" : "none");
+    setVibe(mode, only = []) { // mode: null | "character" | "lifestyle"; only: class/lifestyle ids to show (empty = all)
+      const f = only.length ? ["in", ["get", mode === "lifestyle" ? "lifestyle" : "primary"], ["literal", only]] : null;
+      for (const id of ["vibe-fill", "vibe-line"]) { map.setLayoutProperty(id, "visibility", mode ? "visible" : "none"); map.setFilter(id, f); }
       if (mode) map.setPaintProperty("vibe-fill", "fill-color", mode === "lifestyle" ? lifeColor : vibeColor);
     },
     vibeAt: (pt) => map.queryRenderedFeatures(pt, { layers: ["vibe-fill"] })[0]?.properties,

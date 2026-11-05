@@ -5,7 +5,8 @@ import { tripStatus, sunTimes, fmtTime } from "./sky.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const fmtDay = (iso) => { const d = new Date(iso + "T12:00:00+03:00"); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
+const SPLASH_PHOTO = "Golden Horn Metro Bridge at sunset.jpg";
+const fmtDay =(iso) => { const d = new Date(iso + "T12:00:00+03:00"); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
 
 // Copy by phase. "level" drives how celebratory it looks (0 calm → 3 party).
 export function mood(cfg) {
@@ -63,8 +64,12 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
     : fc?.status === "too-early" ? "The forecast appears about two weeks before. Sunsets are already known."
     : fc?.status === "error" ? "Couldn't load the forecast just now." : "Forecast: Open-Meteo";
   el.dataset.level = m.level;
+  // Sunset over the Golden Horn (Wikimedia Commons; credited on the Photo credits screen via places.geojson),
+  // drifting slowly like a drone shot.
+  const photo = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(SPLASH_PHOTO)}?width=1280`;
   el.innerHTML = `
-    <div class="sp-bg" aria-hidden="true"></div>
+    <div class="sp-photo" aria-hidden="true"><img src="${photo}" alt="" onload="this.parentNode.classList.add('is-loaded')"></div>
+    <div class="sp-scrim" aria-hidden="true"></div>
     ${confetti(m.level)}
     <div class="sp-inner">
       <div class="sp-top">
@@ -89,6 +94,6 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
   go.focus({ preventScroll: true });
   go.addEventListener("click", () => {
     el.classList.add("is-leaving");
-    setTimeout(() => { el.hidden = true; onGo?.(); }, 280);
+    setTimeout(() => { el.hidden = true; onGo?.(); }, 900);
   }, { once: true });
 }

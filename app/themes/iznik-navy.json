@@ -2,7 +2,7 @@
   "id": "iznik-navy",
   "label": "Iznik Navy",
   "app": {
-    "name": "Our Istanbul Tour",
+    "name": "Istanbul Explorer",
     "short": "Istanbul",
     "logo": null,
     "favicon": null
@@ -18,7 +18,7 @@
     "surface-2": "#F6F4EF",
     "line": "#E3DFD6",
     "ink": "#14213D",
-    "ink-2": "#4A5468",
+    "ink-2": "#5E5A55",
     "ink-inverse": "#FFFFFF",
     "navy": "#14213D",
     "primary": "#1F4FA3",

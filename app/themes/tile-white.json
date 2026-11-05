@@ -2,7 +2,7 @@
   "id": "tile-white",
   "label": "Tile White",
   "app": {
-    "name": "Our Istanbul Tour",
+    "name": "Istanbul Explorer",
     "short": "Istanbul",
     "logo": null,
     "favicon": null
@@ -18,7 +18,7 @@
     "surface-2": "#F2F2EF",
     "line": "#E4E4DF",
     "ink": "#111418",
-    "ink-2": "#565C66",
+    "ink-2": "#5E5A55",
     "ink-inverse": "#FFFFFF",
     "navy": "#111418",
     "primary": "#1F4FA3",

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="">
   <meta name="description" content="Our family's map of Istanbul: photos, favourites and a loose plan for each day.">
-  <title>Our Istanbul Tour</title>
+  <title>Istanbul Explorer</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
@@ -34,13 +34,15 @@
 
       <div id="map" class="map" aria-label="Map"></div>
       <div class="map-buttons">
-        <button id="btn-near" class="fab" aria-label="Near me"><span data-icon="locate"></span></button>
         <button id="btn-here" class="fab" aria-label="What's here? Tap, then tap the map" aria-pressed="false"><span data-icon="here"></span></button>
-        <button id="btn-vibe" class="fab" aria-label="Vibe map" aria-pressed="false"><span data-icon="layers"></span></button>
+        <button id="btn-vibe" class="fab fab-vibe" aria-label="Neighbourhood vibe" aria-pressed="false"><span data-icon="tulip"></span></button>
+        <div id="vibe-legend" class="vibe-legend" hidden></div>
       </div>
-      <button id="btn-home" class="fab fab-home" aria-label="Centre on our flat"><span data-icon="home"></span></button>
+      <div class="map-buttons-bottom">
+        <button id="btn-near" class="fab" aria-label="Near me"><span data-icon="locate"></span></button>
+        <button id="btn-home" class="fab" aria-label="Centre on our flat"><span data-icon="home"></span></button>
+      </div>
       <div id="here-hint" class="map-hint" hidden>Tap anywhere on the map</div>
-      <div id="vibe-legend" class="vibe-legend" hidden></div>
       <div id="plans-legend" class="plans-legend" hidden></div>
       <div class="map-credit" aria-hidden="true">© OpenStreetMap · © CARTO</div>
 

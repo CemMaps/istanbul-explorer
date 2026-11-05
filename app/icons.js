@@ -7,6 +7,10 @@ const P = {
   utensils: '<path d="M7 3v8"/><path d="M4.5 3v5a2.5 2.5 0 0 0 5 0V3"/><path d="M7 11v10"/><path d="M17 21V3c-2 1.5-3 4-3 7v3h3"/>',
   tree: '<path d="M12 22v-6"/><path d="M12 16c-4.5 0-7-2.5-7-5.5C5 7 8 4 12 2c4 2 7 5 7 8.5 0 3-2.5 5.5-7 5.5z"/>',
   label: '<path d="M4 7h16M4 12h10M4 17h13"/>',
+  more: '<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
+  // Iznik tulip, the classic Ottoman tile motif (used for the neighbourhood-vibe button).
+  tulip: '<path d="M12 21v-8"/><path d="M12 13c-3.6 0-5.8-2.7-5.8-7l2.9 1.8L12 3.5l2.9 4.3 2.9-1.8c0 4.3-2.2 7-5.8 7z"/><path d="M12 19c-1.6-2.2-3.8-3.2-6.3-3 .6 2.4 3 3.9 6.3 3.9"/><path d="M12 19c1.6-2.2 3.8-3.2 6.3-3-.6 2.4-3 3.9-6.3 3.9"/>',
+  chevDown: '<path d="M6 9l6 6 6-6"/>',
   home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>',
   plane: '<path d="M10.5 3.5c.8-.8 2.2-.8 3 0 .4.4.6 1 .5 1.6L13 10l7 4v2l-7-2-.5 4 2 1.5V21L12 20l-2.5 1v-1.5l2-1.5-.5-4-7 2v-2l7-4-1-4.9c-.1-.6.1-1.2.5-1.6z"/>',
   locate: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/>',

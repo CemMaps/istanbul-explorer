@@ -15,8 +15,8 @@ Keep it light; it supports exploring, it is not the main point.
 
 ## Trip facts
 - Dates: **Fri 27 Nov 2026 – Mon 30 Nov 2026** (4 day tabs: Fri, Sat, Sun, Mon).
-- Arrival Fri 16:15 at [IST or SAW — TO CONFIRM]. Departure Mon 22:00 from [SAW? — TO CONFIRM].
-- Last-day airport buffer: [TO CONFIRM].
+- Arrival Fri 16:15 at **Sabiha Gökçen (SAW)**. Departure **Mon 21:00 from SAW**; be at the airport by **19:00**.
+- Last day: fixed stop "Leave for SAW" at **17:00** (Cihangir → SAW is roughly 45–90 min by road; Monday evening rush). Editable in the Plan.
 - Stay: a flat on **Hüseyin Ağa Bahçe Sokağı, Beyoğlu** (Cihangir / Firuzağa side, just below İstiklal).
   Coordinates: street centre 41.03098, 28.98062, source `osm:way/183820655`. [House number would make it exact — optional.]
 - Time zone: `Europe/Istanbul`, UTC+3 all year (Turkey has no DST since 2016).
@@ -33,7 +33,8 @@ Keep it light; it supports exploring, it is not the main point.
 - Never invent coordinates. Every point has a `source`. No source → drop or flag.
 - No API keys in client code, no runtime AI calls. "Suggested" order is a local heuristic.
 - No opening hours, prices or booking info. One short tip line max.
-- No transit/routing. Transport may come later as its own layer; Google Maps covers it for now.
+- No turn-by-turn routing (Google Maps does that). Allowed: a ferry-lines layer and a short "Getting there" line per place
+  built from sourced stop data (nearest stations/piers + lines). If data is thin, say "Taxi is easiest" rather than guess.
 - **No distance-from-hotel logic.** No proximity scoring, no day-trip thresholds. We'll go anywhere; the map is for exploring.
 - GeoJSON, EPSG:4326, [lng, lat]. Small enough to load in one go.
 - Saving = localStorage. Sharing = URL snapshot links only.
@@ -49,13 +50,14 @@ Ignore all other skills, plugins and MCP tools. Built-in browser pane OK for pho
 | Topic | Decision |
 |---|---|
 | App name | **Our Istanbul Tour** (may change; lives in theme) |
-| Data stack | Wikidata (backbone), Wikimedia pageviews + sitelinks (popularity), Commons (photos), Wikivoyage (research only, own words), Overture Places (cross-check only). **No OSM** except the flat's location. |
+| Data stack | Wikidata (backbone), Wikimedia pageviews + sitelinks (popularity), Commons (photos), Wikivoyage (research only, own words), Overture Places (cross-check + area-character evidence). OSM only where nothing else works: the flat, neighbourhood polygons, ferry lines, stations/piers (ODbL credit in the map attribution). DuckDB is a local data-prep tool only; nothing is hosted. |
 | Place count | No fixed cap. Cover the main things well; quality first. Less prominent places are visually quieter (smaller, later zoom), so the map never feels crowded. |
 | Tiers | `must-see`, `worth-it`, `bonus`. No hidden-gem tier, no day trips. |
-| "Vibe" | Means the **character / texture of the area** (see Character tags). Proposed list awaits Cem's edit. |
-| Lines | **Walks** + **boat trips** (cruises), not ferry transport. |
+| "Vibe" | Means the **character / texture of the area** (see Area character). Shown as an optional **Vibe map** layer. |
+| Lines | **Walks**, **boat trips** (cruises) and **ferry lines** (transport, so you can see where a boat helps). |
+| Getting there | Short per-place line: nearest metro/tram/funicular/ferry stop, walk distance, line name; "Taxi is easiest" when nothing is close. |
 | Filters | Non-matching pins dim to ~25%. Try first, revisit. |
-| Turkish names | [TO CONFIRM — default: small second line under the English name] |
+| Turkish names | Yes: small second line under the English name. |
 | Palette & fonts | Keep: navy #14213D, Iznik cobalt #1F4FA3, pomegranate #C4462E, map ground #EEEBE3; Bricolage Grotesque + Inter. All in `app/theme.json`. |
 | Theme presets | Ship current look first; more presets later (proposed: Bosphorus at Night, Tea & Simit, Tile White, Gül). |
 | Edit mode | `?edit=1` (hidden, not secure). |
@@ -65,19 +67,47 @@ Ignore all other skills, plugins and MCP tools. Built-in browser pane OK for pho
 | Hosting | Later. Likely GitHub Pages (static). Must be https for geolocation. |
 | Mockup tweaks (agreed) | Google Maps button = quiet secondary with official pin icon; plan step numbers in cobalt (not red); filter chips show an active count. |
 
-## Character tags (proposed — Cem to edit)
-The feel of the part of the city a place sits in. Stored per area in `data/areas.json`, inherited by places, overridable per place.
-- **Grand & historic** — imperial monuments, big squares (Sultanahmet)
-- **Traditional & devout** — conservative, everyday religious life (Fatih/Çarşamba, Eyüp, parts of Üsküdar)
-- **Market bustle** — crowded trading streets (Eminönü, Tahtakale, bazaar quarter)
-- **Bohemian & arty** — cafés, galleries, old houses (Cihangir, Balat, Kuzguncuk, Moda)
-- **Lively & young** — bars, nightlife, students (Kadıköy, Beyoğlu side streets, Karaköy)
-- **Waterfront & breezy** — promenades, tea by the sea (Ortaköy, Bebek, Moda shore)
-- **Polished & upmarket** — boutiques, smart cafés (Nişantaşı, Bebek)
+## Area character ("vibe") — v2, researched (2026-11-05)
+**One question:** *what does street life feel like here, for a visitor, most of the day?*
+History and religion are properties of places (the categories), not of areas. That removes the old "devout vs historic" overlap.
+
+Basis: UK townscape character practice (typology first → merge into character areas; fieldwork/evidence checks;
+Landscape Institute TIN 05/2017, Historic England *Understanding Place*), plus Istanbul neighbourhood-pattern research
+(Oruç, Ertekin & Dökmeci: historical, westernised, modern, gated and "Manhattan-type" forms) and gentrification literature.
+
+**Exhaustive by design:** every land polygon in the study area gets exactly one primary class. "Everyday residential"
+is the catch-all for built-up land and "Green & open" for unbuilt land, so nothing is left unclassified. Water is not classified.
+
+| # | Class | What it feels like | Examples |
+|---|---|---|---|
+| 1 | Monumental old city | Imperial sights, squares, tour groups | Sultanahmet, Süleymaniye |
+| 2 | Market & trade | Packed shopping/wholesale streets by day, quiet at night | Eminönü, Tahtakale, Grand Bazaar quarter |
+| 3 | Conservative local | Traditional, observant everyday life; modest dress, little nightlife | Çarşamba/Fatih, Eyüp, parts of Üsküdar |
+| 4 | Bohemian & creative | Old houses, cafés, galleries, gentrifying | Cihangir, Galata, Balat/Fener, Kuzguncuk, Moda |
+| 5 | Nightlife & youth | Bars, music, students, late nights | Beyoğlu side streets, Kadıköy bar streets, Karaköy |
+| 6 | Bosphorus village | Waterfront promenades, tea gardens, wooden yalı houses | Ortaköy, Arnavutköy, Bebek, Çengelköy |
+| 7 | Modern & upmarket | Towers, malls, brands, smart cafés | Nişantaşı, Levent, Bağdat Caddesi |
+| 8 | Working-class inner city | Dense, busy, rough at the edges, real local life | Tarlabaşı, Kasımpaşa, Dolapdere |
+| 9 | Everyday residential | Ordinary apartment neighbourhoods; not a destination (catch-all, neutral grey) | most outer mahalles |
+| 10 | Green & open | Big parks, groves, hillsides, cemeteries (neutral green) | Yıldız, Emirgan, Çamlıca |
+
+**Overlaps:** each area has one `primary` (sets the map colour) and an optional `secondary`
+(shown in words, e.g. "Bohemian, with nightlife"). Places inherit both from their area and can override.
+
+**Method (Phase 1):**
+1. Unit = OSM mahalle polygons (official neighbourhoods, ~370 in the study area), clipped to land.
+2. Evidence per mahalle: Overture Places mix (share of bars, cafés/galleries, mosques, wholesale shops, offices/malls, parks),
+   Wikivoyage district text, published research and press, my judgement.
+3. Written rules turn evidence into a class; I review and note why. Thin evidence → Everyday residential.
+4. Merge neighbouring same-class mahalles into smooth character areas → `data/areas.geojson`.
+5. Cem reviews on the QA page (Phase 2).
+
+**In the app:** a "Vibe map" toggle shows a soft translucent fill under the pins plus a legend; off by default.
+Classes 1–8 get distinct colours (≤8 categorical hues), 9 and 10 stay neutral.
 
 ## Categories (pin icons)
 Mosques & churches · Palaces & museums · Viewpoints · Bazaars & markets · Food & drink · Neighbourhoods · Parks & waterfront.
-Line layers: Walks · Boat trips. Fixed: the flat, airports.
+Line layers: Walks · Boat trips · Ferry lines. Area layer: Vibe map. Fixed: the flat, SAW airport.
 
 ## Architecture (modular)
 - `app/layers.json` — layer registry: id, file, geometry, symbology key, zoom rules, filterable fields, card template.
@@ -88,14 +118,18 @@ Line layers: Walks · Boat trips. Fixed: the flat, airports.
 
 ## Data schema
 `data/places.geojson` properties:
-`id` (slug) · `name` · `name_tr` · `category` · `character` (array, defaults from area) · `tier` · `score` (1–5) + `score_basis` ·
+`id` (slug) · `name` · `name_tr` · `category` · `character` {primary, secondary} (defaults from area) · `tier` · `score` (1–5) + `score_basis` ·
 `area` · `shore` (`europe`/`asia`) · `blurb` (≤25 words, own words) · `tip` (optional) · `indoor` (bool) ·
 `best_time` (`morning`/`midday`/`afternoon`/`golden-hour`/`evening`/`any`) · `dishes` (food only) · `veggie_friendly` (food only) ·
 `wikidata` · `wikipedia` · `photos` [{file, author, licence}] · `source` · `qa`.
 
 `data/walks.geojson`: `id`, `name`, `blurb`, `character`, `best_time`, `length_km` (computed), `photos`, `approx: true`.
 `data/boat_trips.geojson`: `id`, `name`, `blurb`, `best_time`, `duration_hint`, piers from sourced coordinates, `approx: true` for the route line.
-`data/fixed.geojson`: the flat, arrival airport, departure airport.
+`data/ferries.geojson`: ferry lines from OSM `route=ferry` (operator, ref, name, piers).
+`data/stops.geojson`: metro/tram/funicular stations and ferry piers (name, mode, lines) → feeds "Getting there".
+`data/areas.geojson`: merged character areas: `primary`, `secondary`, `mahalles`, `evidence`, `notes`.
+Places also get `getting_there`: [{stop, mode, lines, walk_m}] (computed) + optional `getting_there_note`.
+`data/fixed.geojson`: the flat, SAW airport.
 `data/study_area.geojson`: Bosphorus-centred study polygon for QA outlier checks.
 
 Score = sitelinks + log 12-month EN pageviews + Wikivoyage "See" presence, sanity-checked by judgement (flag gaps ≥ 2 points).
@@ -114,4 +148,6 @@ Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrase
 ## Lessons
 - **Non-ASCII in shell curl args breaks on Windows** (2026-11-05): Turkish names (ğ, ı, ü) in Overpass/Nominatim queries passed via Git Bash `curl` returned empty results. Do HTTP in Python (`urllib`, UTF-8) and run with `PYTHONIOENCODING=utf-8`, or fuzzy-match names locally after an ASCII-only bbox query.
 - **Istanbul winter sunset is ~17:37, not ~16:40** (2026-11-05): Turkey is on permanent UTC+3, so clock sunsets are an hour later than old EET-based figures. Always compute (SunCalc/NOAA); never quote from memory.
-- **Overpass can 502 transiently** (2026-11-05): cache raw responses in the scratchpad/`data/raw/` and retry with backoff.
+- **Overpass can 502 transiently** (2026-11-05): cache raw responses in `data/raw/`, retry with backoff, fall back to a mirror (overpass.private.coffee).
+- **`python -I` ignores `PYTHONIOENCODING`** (2026-11-05): use `python -I -X utf8` for Turkish text output.
+- **data.ibb.gov.tr timed out from here** (2026-11-05): Istanbul's open-data portal may block non-Turkish IPs; don't depend on it.

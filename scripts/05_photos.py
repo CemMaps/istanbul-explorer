@@ -12,8 +12,17 @@ import urllib.parse
 from lib import DATA, http_json
 
 MAX_PHOTOS = 6
-SKIP = re.compile(r"\.(svg|gif|tif|tiff|webm|ogg|ogv|pdf)$|map|plan|logo|flag|coat[_ ]of|seal[_ ]of|icon|locator|diagram|"
-                  r"symbol|signature|commons-logo|wiki|portrait[_ ]of|stamp|banknote|coin", re.I)
+SKIP = re.compile(r"\.(svg|gif|tif|tiff|webm|ogg|ogv|pdf|png)$|map|plan|logo|flag|coat[_ ]of|seal[_ ]of|icon|locator|diagram|"
+                  r"symbol|signature|commons-logo|wiki|portrait[_ ]of|stamp|banknote|coin|inscription|district|reconstruct|"
+                  r"model|drawing|engraving|painting|sketch|lithograph|postcard|1[5-8]\d\d|schema|section|elevation", re.I)
+STOP = {"the", "of", "and", "mosque", "palace", "museum", "istanbul", "tower", "park", "church", "camii", "sarayi"}
+
+
+def relevance(file, p):
+    # Files whose name mentions the place come first (Wikipedia lists images alphabetically, not by quality).
+    words = {w for w in re.findall(r"[a-zçğıöşü]{4,}", (p["name"] + " " + (p.get("name_tr") or "")).lower()) if w not in STOP}
+    f = file.lower()
+    return -sum(w in f for w in words)
 path = DATA / "places.geojson"
 fc = json.loads(path.read_text(encoding="utf-8"))
 feats = fc["features"]
@@ -36,7 +45,8 @@ for i, f in enumerate(top):
     files = [im["title"].split(":", 1)[1] for pg in d.get("query", {}).get("pages", []) for im in pg.get("images", [])]
     files = [x for x in files if x.lower().endswith((".jpg", ".jpeg", ".png", ".webp")) and not SKIP.search(x)]
     lead = [clean(p["photos"][0]["file"])] if p["photos"] else []
-    gallery = lead + [x for x in files if x not in lead]
+    rest = sorted((x for x in files if x not in lead), key=lambda x: relevance(x, p))  # stable: ties keep order
+    gallery = lead + rest
     p["photos"] = [{"file": x} for x in gallery[:MAX_PHOTOS + 4]]  # a few spare in case some are dropped below
     if i % 40 == 0:
         print(f"  galleries {i}/{len(top)}")

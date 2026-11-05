@@ -24,6 +24,7 @@ const fmtDist = (m) => (m < 950 ? `${Math.round(m / 10) * 10} m` : `${(m / 1000)
 
 // ---------- state ----------
 const S = { chip: "all", query: "", near: null, sheet: "peek", selected: null, savedTab: "mine", planDay: null, planRoute: null, planWho: "me", vibe: null, here: false };
+let DATA = null;
 let CFG, THEME, PLACES, BYID, STOPS, FERRIES, AREAS, MAP, FC = null, MOCK = false;
 
 const catCfg = (id) => CFG.categories.find((c) => c.id === id) || { short: id, icon: "pin" };
@@ -61,10 +62,11 @@ function refreshPlaces({ fit = false } = {}) {
 function fitToMatches() {
   const m = PLACES.features.filter((f) => !f.properties.dim);
   if (!m.length) { renderList(); return; }
-  if (m.length === 1) { MAP.map.flyTo({ center: m[0].geometry.coordinates, zoom: 15.5, duration: 700 }); return; }
+  if (m.length === 1) { MAP.map.easeTo({ center: m[0].geometry.coordinates, zoom: 15.5, duration: 600 }); return; }
   const b = new maplibregl.LngLatBounds();
   m.forEach((f) => b.extend(f.geometry.coordinates));
-  MAP.map.fitBounds(b, { padding: 40, maxZoom: 15.5, duration: 700 });
+  MAP.map.stop();
+  MAP.map.fitBounds(b, { padding: 40, maxZoom: 15.5, duration: 600, linear: true });
 }
 
 // ---------- thumbnails ----------
@@ -396,7 +398,7 @@ async function renderThemePicker() {
     const b = e.target.closest("[data-preset]");
     if (!b || b.dataset.preset === THEME.id) return;
     try { localStorage.setItem(LOCAL_THEME, JSON.stringify({ preset: b.dataset.preset, overrides: {} })); } catch { return toast("Couldn't save that on this phone"); }
-    location.reload();
+    switchTheme();
   });
 }
 
@@ -471,29 +473,32 @@ $("#btn-near").addEventListener("click", () => {
 });
 
 // ---------- Vibe map: off → Character → Lifestyle → off ----------
-// Tap a legend row to show only that kind of area (tap more to add; "Show all" clears).
+// While the vibe map is on, the legend replaces the bottom sheet. Tap a row to show only that kind of area;
+// tap it again to show all.
 S.vibeOnly = [];
 function renderVibeLegend() {
   const el = $("#vibe-legend");
   if (!S.vibe) { el.hidden = true; return; }
   const life = S.vibe === "lifestyle";
   const rows = life ? CFG.vibe.lifestyles.map((l) => [l.id, l.label, `--life-${l.id}`]) : CFG.vibe.classes.map((c) => [c.id, c.short, `--vibe-${c.id}`]);
-  const any = S.vibeOnly.length > 0;
-  el.innerHTML = `<div class="vl-seg" role="tablist">
-      <button role="tab" data-vmode="character" aria-selected="${!life}">Character</button>
-      <button role="tab" data-vmode="lifestyle" aria-selected="${life}">Lifestyle</button></div>
-    <ul>${rows.map(([id, label, v]) => `<li><button data-vonly="${id}" aria-pressed="${S.vibeOnly.includes(id)}" class="${any && !S.vibeOnly.includes(id) ? "is-off" : ""}">
-      <i style="background: var(${v})"></i>${esc(label)}</button></li>`).join("")}</ul>
-    ${any ? `<button class="link-btn vl-all" data-vonly="">Show all</button>` : `<p class="vl-tip">Tap one to show only those</p>`}`;
+  const one = S.vibeOnly[0];
+  el.innerHTML = `<div class="vp-head">
+      <div class="vl-seg" role="tablist" aria-label="Colour the map by">
+        <button role="tab" data-vmode="character" aria-selected="${!life}">Character</button>
+        <button role="tab" data-vmode="lifestyle" aria-selected="${life}">Lifestyle</button></div>
+      <button class="icon-btn small" data-vclose aria-label="Close the vibe map">${icon("close", 18)}</button></div>
+    <div class="vp-chips">${rows.map(([id, label, v]) => `<button data-vonly="${id}" aria-pressed="${one === id}" class="${one && one !== id ? "is-off" : ""}">
+      <i style="background: var(${v})"></i>${esc(label)}</button>`).join("")}</div>
+    <p class="vp-tip">${one ? `Showing only ${esc(rows.find((r) => r[0] === one)[1].toLowerCase())} areas. Tap it again to see all.` : "Tap a colour to show only those areas. Tap an area on the map to see what it's like."}</p>`;
   el.hidden = false;
 }
 $("#vibe-legend").addEventListener("click", (e) => {
+  if (e.target.closest("[data-vclose]")) return setVibe(null);
   const m = e.target.closest("[data-vmode]");
   if (m) { S.vibeOnly = []; return setVibe(m.dataset.vmode); }
   const o = e.target.closest("[data-vonly]");
   if (!o) return;
-  const id = o.dataset.vonly;
-  S.vibeOnly = !id ? [] : S.vibeOnly.includes(id) ? S.vibeOnly.filter((x) => x !== id) : [...S.vibeOnly, id];
+  S.vibeOnly = S.vibeOnly[0] === o.dataset.vonly ? [] : [o.dataset.vonly];
   MAP.setVibe(S.vibe, S.vibeOnly);
   renderVibeLegend();
 });
@@ -507,12 +512,17 @@ function vibeTap(e) {
   toast(`${vibeWords(a.primary, a.secondary, a.lifestyle)}. ${cls?.feel || ""}`);
 }
 function setVibe(mode) {
+  const wasOn = !!S.vibe;
   if (!mode) S.vibeOnly = [];
   S.vibe = mode;
   MAP.setVibe(mode, S.vibeOnly);
   $("#btn-vibe").classList.toggle("is-on", !!mode);
   $("#btn-vibe").setAttribute("aria-pressed", !!mode);
   renderVibeLegend();
+  $("#sheet").hidden = !!mode;
+  document.documentElement.classList.toggle("vibe-on", !!mode);
+  if (mode && !wasOn) { const h = $("#vibe-legend").offsetHeight; document.documentElement.style.setProperty("--sheet-peek", `${h}px`); MAP.map.setPadding({ top: 120, bottom: h, left: 0, right: 0 }); }
+  if (!mode && wasOn) setSheet(S.sheet === "open" ? "peek" : S.sheet);
 }
 $("#btn-vibe").addEventListener("click", () => setVibe(S.vibe ? null : "character"));
 
@@ -820,12 +830,41 @@ $("#screen-plan").addEventListener("click", (e) => {
 });
 store.on(() => { if (MAP) renderMapRoutes(); });
 
+async function buildMap(camera) {
+  MAP = await createMap({ container: "map", theme: THEME, config: CFG, data: DATA, onPlace: (id) => { if (!S.here) openPlace(id); } });
+  if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
+  if (camera) MAP.map.jumpTo(camera);
+  MAP.map.on("moveend", renderList);
+  MAP.map.on("click", onMapClick);
+  renderMapRoutes();
+}
+// Theme change: re-apply tokens and rebuild the maps in place (no page reload).
+async function switchTheme() {
+  THEME = await loadTheme();
+  const camera = { center: MAP.map.getCenter(), zoom: MAP.map.getZoom(), bearing: MAP.map.getBearing() };
+  const vibe = S.vibe;
+  MAP.map.remove();
+  if (MINI) { MINI.map.remove(); MINI = null; }
+  await buildMap(camera);
+  refreshPlaces();
+  if (vibe) { S.vibe = null; setVibe(vibe); } else setSheet(S.sheet);
+  $("#theme-picker").querySelectorAll("[data-preset]").forEach((b) => b.setAttribute("aria-checked", b.dataset.preset === THEME.id));
+}
+
 // ---------- boot ----------
 (async function boot() {
   hydrateIcons();
   THEME = await loadTheme();
   const get = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
   CFG = await get("config.json");
+  // Splash once per app open (not when arriving from a shared link or a place link), shown before anything else.
+  const linkHash = /(^#|&)(from|z|place)=/.test(location.hash);
+  let seen = false; try { seen = sessionStorage.getItem("oit:splash") === "1"; sessionStorage.setItem("oit:splash", "1"); } catch { /* ignore */ }
+  const withSplash = !linkHash && !seen && params.get("splash") !== "0";
+  let splashGone = !withSplash, mapReady = false;
+  const afterSplash = () => { splashGone = true; if (mapReady && !store.get().name) askName(); };
+  if (withSplash) showSplash(afterSplash);
+  document.documentElement.classList.remove("booting");
   let editMod = null;
   if (params.get("edit") === "1") editMod = await import("./edit.js");
   MOCK = params.get("mockweather") === "1" || (editMod ? editMod.mockWeatherOn() : (() => { try { return localStorage.getItem("oit:mockweather") === "1"; } catch { return false; } })());
@@ -842,12 +881,9 @@ store.on(() => { if (MAP) renderMapRoutes(); });
   indexCodes(Object.keys(BYID));
   renderBadge();
   renderChips();
-  MAP = await createMap({ container: "map", theme: THEME, config: CFG, data: { places, mask, ferries, stops, fixed, areas }, onPlace: (id) => { if (!S.here) openPlace(id); } });
-  if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
-  MAP.map.on("moveend", renderList);
-  MAP.map.on("click", onMapClick);
+  DATA = { places, mask, ferries, stops, fixed, areas };
+  await buildMap();
   setSheet("peek");
-  renderMapRoutes();
 
   const imp = importFromHash();
   if (imp) {
@@ -858,10 +894,8 @@ store.on(() => { if (MAP) renderMapRoutes(); });
   }
   const m = location.hash.match(/place=([^&]+)/);
   if (m) openPlace(decodeURIComponent(m[1]));
-  const afterSplash = () => { if (!store.get().name) askName(); };
-  // Splash once per app open (not when arriving from a shared link or a place link).
-  let seen = false; try { seen = sessionStorage.getItem("oit:splash") === "1"; sessionStorage.setItem("oit:splash", "1"); } catch { /* ignore */ }
-  if (!imp && !m && !seen && params.get("splash") !== "0") showSplash(afterSplash); else afterSplash();
+  mapReady = true;
+  if (splashGone && !store.get().name) askName();
   if (editMod) editMod.startEditMode(THEME);
   getForecast();
   if (swReady()) navigator.serviceWorker.register("sw.js").catch(() => {});

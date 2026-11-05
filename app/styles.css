@@ -263,7 +263,8 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .progress span { display: block; height: 100%; background: var(--c-primary); transition: width .3s var(--ease); }
 
 /* Splash */
-.splash { position: absolute; inset: 0; z-index: 90; color: var(--c-ink-inverse); background: var(--c-navy); overflow: hidden; animation: fade .35s var(--ease); }
+.splash { position: absolute; inset: 0; z-index: 90; color: var(--c-ink-inverse); background: var(--c-navy); overflow: hidden; }
+.splash .sp-inner { animation: fade .5s var(--ease); }
 .splash.is-leaving { animation: fadeout .9s ease-in-out forwards; }
 @keyframes fade { from { opacity: 0; } }
 @keyframes fadeout { to { opacity: 0; } }
@@ -461,5 +462,31 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .day-tab { position: relative; font-size: 14px; padding: 0 2px; }
 .day-tab small { position: absolute; top: -7px; right: -5px; }
 .name-opts { grid-template-columns: 1fr 1fr; }
+
+/* ---------- Round 5 (2026-11-05) ---------- */
+/* Vibe button: a little four-tile mosaic in the area colours */
+.fab-vibe, .fab-vibe.is-on { background: var(--c-surface); color: var(--c-ink); }
+.fab-vibe.is-on { box-shadow: 0 0 0 2px var(--c-primary), var(--shadow-sm); }
+.vibe-glyph { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 20px; height: 20px; transform: rotate(45deg); }
+.vibe-glyph i { border-radius: 3px; }
+.vibe-glyph i:nth-child(1) { background: var(--vibe-bohemian); }
+.vibe-glyph i:nth-child(2) { background: var(--vibe-village); }
+.vibe-glyph i:nth-child(3) { background: var(--vibe-monumental); }
+.vibe-glyph i:nth-child(4) { background: var(--vibe-nightlife); }
+
+/* Vibe legend takes the bottom sheet's place while the vibe map is on */
+.vibe-panel { position: absolute; z-index: 25; left: 0; right: 0; bottom: 0; background: var(--c-surface); border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 -4px 20px color-mix(in srgb, var(--c-ink) calc(var(--shadow-a) * 70%), transparent); padding: 10px var(--gutter) 10px; animation: rise .25s var(--ease); }
+.vp-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.vp-head .vl-seg { margin: 0; width: 220px; }
+.vp-chips { display: flex; gap: 6px; overflow-x: auto; margin: 0 calc(-1 * var(--gutter)); padding: 2px var(--gutter) 4px; scrollbar-width: none; }
+.vp-chips::-webkit-scrollbar { display: none; }
+.vp-chips button { flex: none; height: 34px; padding: 0 12px 0 10px; border-radius: 999px; border: 1.5px solid var(--c-line); background: var(--c-surface); font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 7px; white-space: nowrap; transition: opacity .15s; }
+.vp-chips button i { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.vp-chips button[aria-pressed="true"] { border-color: var(--c-ink); }
+.vp-chips button.is-off { opacity: .45; }
+.vp-tip { margin: 6px 0 0; font-size: 12.5px; color: var(--c-ink-2); }
+
+/* Theme swatches: room for the selected ring */
+.theme-picker { padding: 6px 4px 14px; }
 
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }

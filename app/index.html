@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="booting">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -14,6 +14,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <style>html.booting body > * { visibility: hidden; }</style>
   <link rel="stylesheet" href="styles.css">
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
@@ -35,8 +36,7 @@
       <div id="map" class="map" aria-label="Map"></div>
       <div class="map-buttons">
         <button id="btn-here" class="fab" aria-label="What's here? Tap, then tap the map" aria-pressed="false"><span data-icon="here" data-size="28"></span></button>
-        <button id="btn-vibe" class="fab fab-vibe" aria-label="Neighbourhood vibe" aria-pressed="false"><span data-icon="tulip"></span></button>
-        <div id="vibe-legend" class="vibe-legend" hidden></div>
+        <button id="btn-vibe" class="fab fab-vibe" aria-label="Neighbourhood vibe map" aria-pressed="false"><span class="vibe-glyph" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button>
       </div>
       <div class="map-buttons-bottom">
         <button id="btn-near" class="fab" aria-label="Near me"><span data-icon="locate"></span></button>
@@ -46,6 +46,7 @@
       <div id="plans-legend" class="plans-legend" hidden></div>
       <div class="map-credit" aria-hidden="true">© OpenStreetMap · © CARTO</div>
 
+      <section id="vibe-legend" class="vibe-panel" aria-label="Neighbourhood vibe legend" hidden></section>
       <section id="sheet" class="sheet" data-state="peek" aria-label="Places in view">
         <button class="sheet-handle" id="sheet-handle" aria-label="Drag or tap to resize the list"><span></span></button>
         <button id="sheet-bar" class="sheet-bar"><span id="sheet-bar-txt">Show places</span><span data-icon="chevronDown"></span></button>
@@ -93,11 +94,11 @@
       <div class="page">
         <h1 class="page-title">More</h1>
         <button id="open-splash" class="more-row"><span data-icon="sun"></span><span><b>Countdown &amp; trip forecast</b><small id="splash-sub">Days to go, weather and sunsets</small></span><span data-icon="chevronRight"></span></button>
+        <h2 class="settings-title">App theme</h2>
+        <div id="theme-picker" class="theme-picker" role="radiogroup" aria-label="App theme"></div>
+        <button id="open-credits" class="more-row"><span data-icon="label"></span><span><b>Photo credits &amp; data sources</b><small>Wikimedia Commons, OpenStreetMap, CARTO</small></span><span data-icon="chevronRight"></span></button>
         <div class="more-row static"><span data-icon="offline"></span><span><b>Offline</b><small>Keep the map and photos on this phone</small></span></div>
         <div id="offline-box" class="offline-box"></div>
-        <h2 class="settings-title">Look</h2>
-        <div id="theme-picker" class="theme-picker" role="radiogroup" aria-label="App look"></div>
-        <button id="open-credits" class="more-row"><span data-icon="label"></span><span><b>Photo credits &amp; data sources</b><small>Wikimedia Commons, OpenStreetMap, CARTO</small></span><span data-icon="chevronRight"></span></button>
       </div>
     </section>
 

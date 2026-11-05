@@ -20,11 +20,11 @@ export function mood(cfg) {
     return { st, level: 2, big: `Day ${i}`, unit: `of ${n}`, line: "Günaydın! Here's what today looks like." };
   }
   const d = st.daysToGo;
-  if (d === 1) return { st, level: 3, big: "Tomorrow!", unit: "", line: "Passports, chargers, comfy shoes. İyi yolculuklar!" };
-  if (d <= 7) return { st, level: 3, big: String(d), unit: "days to go", line: "This week! Pack a warm layer for the ferries." };
-  if (d <= 14) return { st, level: 2, big: String(d), unit: "days to go", line: "Two weeks out. The real forecast is arriving." };
-  if (d <= 30) return { st, level: 1, big: String(d), unit: "days to go", line: "Not long now. Start hearting places you like." };
-  return { st, level: 0, big: String(d), unit: "days to go", line: "Simit, ferries and sunsets over the Bosphorus." };
+  if (d === 1) return { st, level: 3, big: "Tomorrow!", unit: "", line: "" };
+  if (d <= 7) return { st, level: 3, big: String(d), unit: "days to go", line: "" };
+  if (d <= 14) return { st, level: 2, big: String(d), unit: "days to go", line: "" };
+  if (d <= 30) return { st, level: 1, big: String(d), unit: "days to go", line: "" };
+  return { st, level: 0, big: String(d), unit: "days to go", line: "" };
 }
 
 export function badgeText(cfg) {
@@ -56,12 +56,10 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
     const today = m.st.phase === "during" && m.st.today === d.date;
     return `<li class="sp-day ${today ? "is-today" : ""}">
       <span class="sp-dow">${d.label.slice(0, 3)}</span><span class="sp-date">${fmtDay(d.date)}</span>
-      ${w ? `${icon(w.icon, 30)}<span class="sp-temp">${w.max}°<small>${w.min}°</small></span><span class="sp-rain">${w.rain}% rain</span>
-             <span class="sp-sun">${icon("sunset", 14)}${fmtTime(sun.sunset)}</span>`
-          : `${icon("sunset", 30)}<span class="sp-temp">${fmtTime(sun.sunset)}</span><span class="sp-rain">sunset</span>`}</li>`;
+      ${w ? `${icon(w.icon, 30)}<span class="sp-temp">${w.max}°<small>${w.min}°</small></span><span class="sp-rain">${w.rain}% rain</span>` : ""}</li>`;
   }).join("");
   const note = fc?.sample ? `<span class="tag-sample">Sample forecast</span>`
-    : fc?.status === "too-early" ? "The forecast appears about two weeks before. Sunsets are already known."
+    : fc?.status === "too-early" || !fc ? "The forecast will appear about two weeks before the trip."
     : fc?.status === "error" ? "Couldn't load the forecast just now." : "Forecast: Open-Meteo";
   el.dataset.level = m.level;
   // Sunset over the Golden Horn (Wikimedia Commons; credited on the Photo credits screen via places.geojson),
@@ -79,8 +77,7 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
       <div class="sp-hero">
         <h1 class="sp-big">${esc(m.big)}</h1>
         ${m.unit ? `<div class="sp-unit">${esc(m.unit)}</div>` : ""}
-        <p class="sp-line">${esc(m.line)}</p>
-        <p class="sp-who">${esc(people.join(" · "))} · ${fmtDay(days[0].date)} to ${fmtDay(days[days.length - 1].date)}</p>
+        ${m.line ? `<p class="sp-line">${esc(m.line)}</p>` : ""}
       </div>
       <div class="sp-fc">
         <ul class="sp-days">${cells}</ul>

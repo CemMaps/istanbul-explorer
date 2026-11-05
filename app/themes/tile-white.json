@@ -1,11 +1,16 @@
 {
   "id": "tile-white",
   "label": "Tile White",
-  "app": { "name": "Our Istanbul Tour", "short": "Istanbul", "logo": null, "favicon": null },
+  "app": {
+    "name": "Our Istanbul Tour",
+    "short": "Istanbul",
+    "logo": null,
+    "favicon": null
+  },
   "fonts": {
-    "heading": "Space Grotesk",
-    "body": "Inter",
-    "googleFonts": "family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700"
+    "heading": "Geist",
+    "body": "Geist",
+    "googleFonts": "family=Geist:wght@400..800"
   },
   "colors": {
     "ground": "#F7F7F5",
@@ -40,8 +45,18 @@
     "Neighbourhoods": "#1F6F66",
     "Parks & waterfront": "#2F7A3A"
   },
-  "routes": { "ferry": "#1B7F95", "walk": "#C9402A", "boat": "#1F4FA3" },
-  "transit": { "metro": "#C9402A", "tram": "#1F4FA3", "funicular": "#5B3A8E", "ferry": "#1B7F95", "rail": "#565C66" },
+  "routes": {
+    "ferry": "#1B7F95",
+    "walk": "#C9402A",
+    "boat": "#1F4FA3"
+  },
+  "transit": {
+    "metro": "#C9402A",
+    "tram": "#1F4FA3",
+    "funicular": "#5B3A8E",
+    "ferry": "#1B7F95",
+    "rail": "#565C66"
+  },
   "radius": 10,
   "shadow": 0.08,
   "basemap": "positron",

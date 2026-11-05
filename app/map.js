@@ -53,8 +53,8 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   map.addSource("ferries", { type: "geojson", data: data.ferries });
   map.addLayer({ id: "ferries", type: "line", source: "ferries",
     layout: { "line-cap": "round", "line-join": "round" },
-    paint: { "line-color": cssVar("--route-ferry"), "line-width": ["interpolate", ["linear"], ["zoom"], 10, 1.2, 15, 2.6],
-             "line-dasharray": [2, 2], "line-opacity": 0.75 } });
+    paint: { "line-color": cssVar("--route-ferry"), "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 15, 2],
+             "line-dasharray": [2, 2.5], "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.3, 14, 0.55] } });
 
   // Stations and piers (close zoom only)
   map.addSource("stops", { type: "geojson", data: data.stops });
@@ -70,6 +70,25 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   const dimOp = ["case", ["get", "dim"], config.dimOpacity, 1];
   const tiers = Object.entries(config.tiers).reverse(); // draw bonus first, must-see on top
   const placeLayers = [];
+  const dotLayers = [];
+  // Discovery dots: every place is always at least a small coloured dot, so nothing is invisible.
+  // They show a few zoom levels before the tier's icons, then sit underneath them; if an icon is
+  // hidden by a collision, its dot still shows.
+  const catColor = ["match", ["get", "category"], ...config.categories.flatMap((c) => [c.id, cssVar(catVar(c.id))]), cssVar("--c-ink-2")];
+  for (const [tier, t] of tiers) {
+    const from = Math.max(config.map.minZoom ?? 9, (t.minzoom || 10) - (tier === "bonus" ? 2.6 : 3));
+    const to = Math.max(t.minzoom || 0, from + 1);
+    map.addLayer({ id: `dots-${tier}`, type: "circle", source: "places", minzoom: from,
+      filter: ["all", ["==", ["get", "tier"], tier], ["!=", ["get", "asLabel"], true]],
+      paint: {
+        "circle-color": catColor,
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], from, tier === "bonus" ? 1.6 : 2.2, to, tier === "bonus" ? 3 : 3.8],
+        "circle-stroke-color": bg, "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], from, 0.6, to, 1.2],
+        "circle-opacity": ["case", ["get", "dim"], config.dimOpacity * 0.6, tier === "bonus" ? 0.75 : 0.9],
+        "circle-stroke-opacity": ["case", ["get", "dim"], 0.2, 1],
+      } });
+    dotLayers.push(`dots-${tier}`);
+  }
   for (const [tier, t] of tiers) {
     const isTier = ["==", ["get", "tier"], tier];
     const notLabelCat = ["!=", ["get", "asLabel"], true];
@@ -123,6 +142,18 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   map.addLayer({ id: "me-halo", type: "circle", source: "me", paint: { "circle-radius": 16, "circle-color": cssVar("--c-primary"), "circle-opacity": 0.18 } });
   map.addLayer({ id: "me", type: "circle", source: "me", paint: { "circle-radius": 7, "circle-color": cssVar("--c-primary"), "circle-stroke-color": bg, "circle-stroke-width": 2.5 } });
 
+  for (const id of dotLayers) {
+    // A tap on a dot zooms in to where its icon shows (or opens it if we're already close).
+    map.on("click", id, (e) => {
+      if (map.queryRenderedFeatures(e.point, { layers: [...placeLayers, "selected"] }).length) return; // icon handles it
+      const f = e.features[0];
+      const target = config.tiers[f.properties.tier].minzoom + 0.4;
+      if (map.getZoom() >= target - 0.2) onPlace(f.properties.id);
+      else map.easeTo({ center: f.geometry.coordinates, zoom: Math.max(target, map.getZoom() + 1.5), duration: 600 });
+    });
+    map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
+    map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
+  }
   for (const id of [...placeLayers, "selected"]) {
     map.on("click", id, (e) => onPlace(e.features[0].properties.id));
     map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
@@ -131,6 +162,8 @@ export async function createMap({ container, theme, config, data, onPlace }) {
 
   const tierZoom = Object.fromEntries(placeLayers.map((id) => [id, map.getLayer(id).minzoom || 0]));
   const baseFilter = Object.fromEntries(placeLayers.map((id) => [id, map.getFilter(id)]));
+  const dotZoom = Object.fromEntries(dotLayers.map((id) => [id, map.getLayer(id).minzoom || 0]));
+  const dotFilter = Object.fromEntries(dotLayers.map((id) => [id, map.getFilter(id)]));
   return {
     map,
     // While a filter/search is active, matching places show at every zoom (so "zoom to results" works);
@@ -140,6 +173,10 @@ export async function createMap({ container, theme, config, data, onPlace }) {
         const lesser = !id.endsWith("must-see");
         map.setLayerZoomRange(id, on ? 0 : z, 24);
         map.setFilter(id, on && lesser ? ["all", baseFilter[id], ["!", ["get", "dim"]]] : baseFilter[id]);
+      }
+      for (const id of dotLayers) {
+        map.setLayerZoomRange(id, on ? 0 : dotZoom[id], 24);
+        map.setFilter(id, on ? ["all", dotFilter[id], ["!", ["get", "dim"]]] : dotFilter[id]);
       }
     },
     setPlaces: (fc) => map.getSource("places").setData(fc),

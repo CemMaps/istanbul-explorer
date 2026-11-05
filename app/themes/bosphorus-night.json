@@ -1,11 +1,16 @@
 {
   "id": "bosphorus-night",
   "label": "Bosphorus at Night",
-  "app": { "name": "Our Istanbul Tour", "short": "Istanbul", "logo": null, "favicon": null },
+  "app": {
+    "name": "Our Istanbul Tour",
+    "short": "Istanbul",
+    "logo": null,
+    "favicon": null
+  },
   "fonts": {
-    "heading": "Bricolage Grotesque",
-    "body": "Inter",
-    "googleFonts": "family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700"
+    "heading": "Figtree",
+    "body": "Figtree",
+    "googleFonts": "family=Figtree:wght@400..800"
   },
   "colors": {
     "ground": "#0F1626",
@@ -40,8 +45,18 @@
     "Neighbourhoods": "#5CCFBE",
     "Parks & waterfront": "#86CF77"
   },
-  "routes": { "ferry": "#55C1D6", "walk": "#FF8466", "boat": "#7EA6FF" },
-  "transit": { "metro": "#FF8466", "tram": "#7EA6FF", "funicular": "#C29BF0", "ferry": "#55C1D6", "rail": "#AEB7CA" },
+  "routes": {
+    "ferry": "#55C1D6",
+    "walk": "#FF8466",
+    "boat": "#7EA6FF"
+  },
+  "transit": {
+    "metro": "#FF8466",
+    "tram": "#7EA6FF",
+    "funicular": "#C29BF0",
+    "ferry": "#55C1D6",
+    "rail": "#AEB7CA"
+  },
   "radius": 18,
   "shadow": 0.4,
   "basemap": "dark",

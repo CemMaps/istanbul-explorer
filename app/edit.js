@@ -42,7 +42,7 @@ export async function startEditMode(theme) {
   let dirtyMap = false;
 
   const panel = document.createElement("aside");
-  panel.className = "editor";
+  panel.className = "editor is-collapsed";
   panel.setAttribute("aria-label", "Theme editor");
   document.getElementById("app").appendChild(panel);
 
@@ -54,7 +54,8 @@ export async function startEditMode(theme) {
       return r != null && r < 4.5 ? `<li>${esc(label)}: ${r.toFixed(1)}:1 (needs 4.5)</li>` : "";
     }).join("");
     panel.innerHTML = `
-      <div class="ed-head"><b>Edit look</b><button class="icon-btn small" data-ed="collapse" aria-label="Collapse">${icon("chevronDown", 20)}</button></div>
+      <button class="ed-fab" data-ed="collapse" aria-label="Open the theme editor">${icon("palette", 22)}</button>
+      <div class="ed-head"><b>Edit look</b><button class="icon-btn small" data-ed="collapse" aria-label="Close the editor">${icon("close", 20)}</button></div>
       <div class="ed-body">
         <p class="ed-note">Changes save in <b>this browser only</b>. To give everyone the new look: <b>Export theme.json</b>, replace <code>app/theme.json</code> in the repo, then redeploy.</p>
         <label class="ed-row">Preset
@@ -81,7 +82,7 @@ export async function startEditMode(theme) {
       </div>`;
   }
 
-  function live() { applyTheme(merged()); dirtyMap = true; render(); }
+  function live() { applyTheme(merged()); dirtyMap = true; render(); panel.classList.remove("is-collapsed"); }
 
   panel.addEventListener("input", (e) => {
     const c = e.target.dataset.color;

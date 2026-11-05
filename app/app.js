@@ -4,6 +4,7 @@ import { createMap } from "./map.js";
 import { store } from "./store.js";
 import { tripStatus, sunTimes, forecast, fmtTime, istanbulToday, istMinutes, dayParts } from "./sky.js";
 import { suggest } from "./plan.js";
+import { renderSplash, badgeText } from "./splash.js";
 import { indexCodes, importFromHash, shareMyPicks, people, mergeIntoMine, removePerson, matches, fmtAsOf } from "./share.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -27,7 +28,10 @@ let CFG, THEME, PLACES, BYID, STOPS, MAP, FC = null, MOCK = false;
 
 const catCfg = (id) => CFG.categories.find((c) => c.id === id) || { short: id, icon: "pin" };
 const tierRank = { "must-see": 0, "worth-it": 1, bonus: 2 };
-const photoUrl = (file, w = 480) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file)}?width=${w}`;
+// Wikimedia serves thumbnails at standard widths only; other sizes are slow or refused. Snap up to the next one.
+const THUMB_W = [120, 250, 330, 500, 960, 1280];
+const plainFile = (f) => { try { return decodeURIComponent(f); } catch { return f; } }; // some names arrive URL-encoded
+const photoUrl = (file, w = 500) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(plainFile(file))}?width=${THUMB_W.find((x) => x >= w) || 1280}`;
 const filterActive = () => S.chip !== "all" || !!S.query;
 const dayCfg = (id) => CFG.trip.days.find((d) => d.id === id);
 
@@ -64,10 +68,12 @@ function fitToMatches() {
 }
 
 // ---------- thumbnails ----------
-function thumb(p, { pill = true, heart = true, w = 400, badge = "" } = {}) {
+// All small thumbnails use one size (330 px), so one cached copy serves cards, rows and the plan offline.
+const THUMB = 330;
+function thumb(p, { pill = true, heart = true, badge = "" } = {}) {
   const ph = p.photos?.[0];
   return `<div class="thumb" style="--cat: var(${catVar(p.category)})">
-    ${ph ? `<img loading="lazy" alt="" src="${photoUrl(ph.file, w)}" onerror="this.remove()">` : ""}
+    ${ph ? `<img loading="lazy" alt="" src="${photoUrl(ph.file, THUMB)}" onerror="this.remove()">` : ""}
     ${icon(catCfg(p.category).icon, 30)}
     ${pill && !badge ? `<span class="pill">${esc(catCfg(p.category).short)}</span>` : ""}
     ${badge ? `<span class="badge-both">${esc(badge)}</span>` : ""}
@@ -119,7 +125,7 @@ function renderList() {
   $("#cards").innerHTML = items.length
     ? items.slice(0, 12).map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p)}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${sub(x)}</div></button>`).join("")
     : `<p class="empty">Nothing here with these filters. Zoom out or clear the search.</p>`;
-  $("#list").innerHTML = items.slice(0, 150).map((x) => `<button class="row" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false, w: 160 })}
+  $("#list").innerHTML = items.slice(0, 150).map((x) => `<button class="row" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false })}
       <div class="row-txt"><div class="row-name">${esc(x.p.name)}</div><div class="row-sub">${esc(catCfg(x.p.category).short)} · ${sub(x)}</div></div></button>`).join("")
     || `<p class="empty">Nothing in view.</p>`;
   $("#sheet-toggle").textContent = S.sheet === "open" ? "Show map" : `See all ${items.length}`;
@@ -176,7 +182,7 @@ function setSheet(state) {
   sheet.dataset.state = state;
   sheet.style.setProperty("--sheet-h", `${h[state]}px`);
   document.documentElement.style.setProperty("--sheet-peek", `${state === "open" ? h.peek : h[state]}px`);
-  MAP.map.setPadding({ top: 150, bottom: state === "open" ? h.peek : h[state], left: 0, right: 0 });
+  MAP.map.setPadding({ top: 120, bottom: state === "open" ? h.peek : h[state], left: 0, right: 0 });
   $("#sheet-handle").setAttribute("aria-label", state === "closed" ? "Show the list" : "Drag or tap to resize the list");
   renderList();
 }
@@ -284,7 +290,7 @@ function openPlace(id) {
       <div class="days" id="days">${dayButtons(id)}</div>
       <h2 class="section-title">Getting there</h2>
       <div class="getting">${gettingThere(coord)}</div>
-      ${near.length ? `<h2 class="section-title">Close by</h2><div class="nearby">${near.map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false, w: 240 })}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${Math.max(1, Math.round(x.d / 80))} min walk</div></button>`).join("")}</div>` : ""}
+      ${near.length ? `<h2 class="section-title">Close by</h2><div class="nearby">${near.map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false })}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${Math.max(1, Math.round(x.d / 80))} min walk</div></button>`).join("")}</div>` : ""}
       <a class="gmaps" href="https://www.google.com/maps/search/?api=1&query=${coord[1]},${coord[0]}" target="_blank" rel="noopener">${icon("pin", 20)} Open in Google Maps</a>
     </div>`;
   el.hidden = false;
@@ -363,34 +369,94 @@ function showCredits() {
 }
 $("#open-credits").addEventListener("click", showCredits);
 
-// ---------- countdown + forecast panel ----------
-function renderCountdown() {
-  const st = tripStatus(CFG.trip.days);
-  const d = CFG.trip.days;
-  if (st.phase === "before") { $("#cd-num").textContent = st.daysToGo; $("#cd-label").textContent = st.daysToGo === 1 ? "day to go" : "days to go"; }
-  else if (st.phase === "during") { $("#cd-num").textContent = `Day ${st.dayIndex}`; $("#cd-label").textContent = `of ${st.of}`; }
-  else { $("#cd-num").textContent = "Teşekkürler"; $("#cd-label").textContent = "thanks for a great trip"; }
-  $("#cd-sub").textContent = `Istanbul · ${d[0].label} to ${d[d.length - 1].label}`;
+// ---------- trip badge + splash ----------
+function renderBadge() {
+  $("#trip-badge-txt").textContent = badgeText(CFG);
   if (THEME.app.logo) { $("#logo").src = THEME.app.logo; $("#logo").hidden = false; }
 }
-$("#countdown").addEventListener("click", async () => {
-  const btn = $("#countdown"), panel = $("#forecast-panel");
-  const open = btn.getAttribute("aria-expanded") !== "true";
-  btn.setAttribute("aria-expanded", open);
-  panel.hidden = !open;
-  if (!open) return;
-  panel.innerHTML = `<p class="fc-empty">Loading…</p>`;
-  const fc = await getForecast();
-  const cells = CFG.trip.days.map((d) => {
-    const w = fc.days[d.date];
-    const sun = sunTimes(d.date, CFG.map.home);
-    return `<div class="fc-day"><b>${d.label}</b>${w ? `${icon(w.icon, 26)}<div class="fc-temp">${w.max}°<small> / ${w.min}°</small></div><div>${w.rain}% rain</div>` : icon("sunset", 26)}<div>Sunset ${fmtTime(sun.sunset)}</div></div>`;
-  }).join("");
-  const note = fc.status === "too-early" ? "Forecast appears closer to the trip (about 2 weeks before)." :
-    fc.status === "error" ? "Couldn't load the forecast. Try again later." : "Forecast by Open-Meteo";
-  panel.innerHTML = `<div class="fc-days">${cells}</div>
-    <div class="fc-note"><span>${fc.sample ? `<span class="tag-sample">Sample forecast</span>` : note}</span><span>Sunrise ≈ ${fmtTime(sunTimes(CFG.trip.days[0].date, CFG.map.home).sunrise)}</span></div>`;
-});
+async function showSplash(after) {
+  const el = $("#splash");
+  renderSplash(el, { cfg: CFG, theme: THEME, fc: FC, people: CFG.trip.people, onGo: after });
+  if (!FC) { await getForecast(); if (!el.hidden && !el.classList.contains("is-leaving")) renderSplash(el, { cfg: CFG, theme: THEME, fc: FC, people: CFG.trip.people, onGo: after }); }
+}
+$("#trip-badge").addEventListener("click", () => showSplash());
+
+// ---------- Look (theme picker for everyone) ----------
+const LOCAL_THEME = "oit:theme-local";
+async function renderThemePicker() {
+  const box = $("#theme-picker");
+  if (box.dataset.ready) return;
+  const index = await fetch("themes/index.json").then((r) => r.json());
+  const presets = await Promise.all(index.presets.map((id) => fetch(`themes/${id}.json`).then((r) => r.json())));
+  const cur = THEME.id;
+  box.innerHTML = presets.map((p) => `<button role="radio" aria-checked="${p.id === cur}" data-preset="${p.id}" class="tp"
+      style="--tp-a:${p.colors.navy};--tp-b:${p.colors.primary};--tp-c:${p.colors.accent};--tp-d:${p.colors["map-land"]}">
+      <span class="tp-sw"><i></i><i></i><i></i></span><span class="tp-name">${esc(p.label)}</span></button>`).join("");
+  box.dataset.ready = "1";
+  box.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-preset]");
+    if (!b || b.dataset.preset === THEME.id) return;
+    try { localStorage.setItem(LOCAL_THEME, JSON.stringify({ preset: b.dataset.preset, overrides: {} })); } catch { return toast("Couldn't save that on this phone"); }
+    location.reload();
+  });
+}
+
+// ---------- Offline ----------
+const swReady = () => ("serviceWorker" in navigator) && (location.protocol === "https:" || location.hostname === "localhost");
+function renderOffline(state = {}) {
+  const box = $("#offline-box");
+  if (!swReady()) { box.innerHTML = `<p class="hint left">Offline saving works once the app is online at its https link.</p>`; return; }
+  if (state.running) {
+    box.innerHTML = `<div class="progress"><span style="width:${Math.round(state.done / state.total * 100)}%"></span></div>
+      <p class="hint left">Saving… ${state.done} of ${state.total}. Keep the app open.</p>`;
+    return;
+  }
+  let saved = null; try { saved = localStorage.getItem("oit:offline"); } catch { /* ignore */ }
+  box.innerHTML = `<button class="btn-secondary" id="offline-btn">${icon("download", 20)} ${saved ? "Update offline copy" : "Save for offline"}</button>
+    <p class="hint left">${saved ? `Saved ${esc(saved)}. The map, photos and plan work without signal.` : "Saves the map of the whole area, every place and the main photos (about 60 MB). Best on Wi-Fi."}</p>`;
+  $("#offline-btn").onclick = saveOffline;
+}
+async function saveOffline() {
+  await navigator.serviceWorker.ready;
+  const urls = [];
+  // Basemap vector tiles for the study area, zoom 10–14 (MapLibre over-zooms z14 for closer views).
+  const style = MAP.map.getStyle();
+  const srcUrl = Object.values(style.sources).find((s) => s.type === "vector" && s.url)?.url;
+  let tiles = [];
+  try { tiles = srcUrl ? (await fetch(srcUrl).then((r) => r.json())).tiles : []; } catch { /* ignore */ }
+  const [w, s, e, n] = [28.9, 40.95, 29.21, 41.27];
+  const t2 = (lon, lat, z) => [Math.floor((lon + 180) / 360 * 2 ** z), Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * 2 ** z)];
+  if (tiles.length) for (let z = 10; z <= 14; z++) {
+    const [x0, y0] = t2(w, n, z), [x1, y1] = t2(e, s, z);
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) urls.push(tiles[(x + y) % tiles.length].replace("{z}", z).replace("{x}", x).replace("{y}", y));
+  }
+  // Photos: the card thumbnail of every place, and the first big gallery photo of every must-see / worth-it place.
+  for (const f of PLACES.features) {
+    const p = f.properties;
+    if (!p.photos?.[0]) continue;
+    urls.push(photoUrl(p.photos[0].file, THUMB));
+    if (p.tier !== "bonus") urls.push(photoUrl(p.photos[0].file, 900));
+  }
+  const total = urls.length;
+  let done = 0, failed = 0;
+  renderOffline({ running: true, done, total });
+  const queue = [...urls];
+  const worker = async () => {
+    while (queue.length) {
+      const u = queue.shift();
+      // Tiles are fetched by MapLibre with CORS; photos by <img> tags (no-cors), so cache each the way it's used.
+      const tile = /cartocdn/.test(u);
+      try { const r = await fetch(u, { mode: tile ? "cors" : "no-cors" }); if (tile && !r.ok) failed++; } catch { failed++; }
+      done++;
+      if (done % 20 === 0 || done === total) renderOffline({ running: true, done, total });
+    }
+  };
+  await Promise.all(Array.from({ length: 4 }, worker));
+  const when = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
+  try { localStorage.setItem("oit:offline", when); } catch { /* ignore */ }
+  renderOffline();
+  toast(failed > total * 0.1 ? `Saved, but ${failed} items failed. Try again on Wi-Fi.` : "Saved for offline");
+}
 
 // ---------- buttons ----------
 $("#btn-home").addEventListener("click", () => MAP.map.flyTo({ center: CFG.map.home, zoom: 15, duration: 800 }));
@@ -410,7 +476,7 @@ function showScreen(name) {
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-active", x.dataset.screen === name));
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("is-active", s.id === `screen-${name}`));
   if (!$("#place").hidden) closePlace();
-  if (name === "saved") renderSaved();
+  if (name === "saved") { renderSaved(); renderThemePicker(); renderOffline(); }
   if (name === "plan") renderPlan();
   if (name === "explore") MAP.map.resize();
 }
@@ -515,7 +581,7 @@ async function renderPlan() {
     const part = partOf[s.id];
     const x = part && w ? w.parts[part] : null;
     return `<div class="stop"><div class="stop-num"><b>${i + 1}</b></div>
-      <div class="stop-card" data-open-x="${esc(s.id)}" role="button" tabindex="0">${thumb(s.p, { pill: false, heart: false, w: 160 })}
+      <div class="stop-card" data-open-x="${esc(s.id)}" role="button" tabindex="0">${thumb(s.p, { pill: false, heart: false })}
         <div class="stop-txt">${part ? `<div class="stop-part">${esc(labels[part] || part)}</div>` : ""}<div class="stop-name">${esc(s.p.name)}</div>
           <div class="stop-why">${esc(part ? s.reason : s.p.area)}</div></div>
         ${x ? `<span class="wx-chip">${icon(x.icon, 16)}${x.temp}°</span>` : ""}
@@ -530,8 +596,7 @@ async function renderPlan() {
   // tray: hearted but not on any day
   const unplanned = mine ? store.get().hearts.filter((id) => BYID[id] && !store.dayOf(id)) : [];
   $("#plan-tray").innerHTML = mine && unplanned.length ? `<div class="tray"><h2>Saved, not planned yet</h2><div class="tray-chips">${unplanned.map((id) =>
-    `<button class="tray-chip" data-plan-add="${esc(id)}">${icon("check", 18).replace("ico", "ico plus")}${esc(BYID[id].properties.name)}</button>`).join("")}</div></div>` : "";
-  $("#plan-tray").querySelectorAll(".tray-chip .ico").forEach((el) => (el.outerHTML = icon("sparkle", 18)));
+    `<button class="tray-chip" data-plan-add="${esc(id)}" aria-label="Add ${esc(BYID[id].properties.name)} to ${d.label}">${icon("plus", 18)}${esc(BYID[id].properties.name)}</button>`).join("")}</div></div>` : "";
 }
 $("#plan-tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-plan]"); if (b) { S.planDay = b.dataset.plan; renderPlan(); } });
 $("#plan-mode").addEventListener("click", (e) => { const b = e.target.closest("[data-mode]"); if (b) { S.planMode = b.dataset.mode; renderPlan(); } });
@@ -569,7 +634,7 @@ $("#screen-plan").addEventListener("click", (e) => {
   PLACES = places; STOPS = stops;
   BYID = Object.fromEntries(places.features.map((f) => [f.properties.id, f]));
   indexCodes(Object.keys(BYID));
-  renderCountdown();
+  renderBadge();
   renderChips();
   MAP = await createMap({ container: "map", theme: THEME, config: CFG, data: { places, mask, ferries, stops, fixed }, onPlace: openPlace });
   MAP.map.on("moveend", renderList);
@@ -582,10 +647,13 @@ $("#screen-plan").addEventListener("click", (e) => {
     toast(msg);
     if (imp.status === "added" || imp.status === "updated") { S.savedTab = `p:${imp.name}`; showScreen("saved"); }
   }
-  if (!store.get().name) askName();
   const m = location.hash.match(/place=([^&]+)/);
   if (m) openPlace(decodeURIComponent(m[1]));
+  const afterSplash = () => { if (!store.get().name) askName(); };
+  // Splash once per app open (not when arriving from a shared link or a place link).
+  let seen = false; try { seen = sessionStorage.getItem("oit:splash") === "1"; sessionStorage.setItem("oit:splash", "1"); } catch { /* ignore */ }
+  if (!imp && !m && !seen && params.get("splash") !== "0") showSplash(afterSplash); else afterSplash();
   if (editMod) editMod.startEditMode(THEME);
   getForecast().then(renderRightNow);
-  if ("serviceWorker" in navigator && location.protocol === "https:") navigator.serviceWorker.register("sw.js").catch(() => {});
+  if (swReady()) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

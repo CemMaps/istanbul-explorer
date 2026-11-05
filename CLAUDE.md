@@ -58,8 +58,11 @@ Ignore all other skills, plugins and MCP tools. Built-in browser pane OK for pho
 | Getting there | Short per-place line: nearest metro/tram/funicular/ferry stop, walk distance, line name; "Taxi is easiest" when nothing is close. |
 | Filters | Non-matching pins dim to ~25%. Try first, revisit. |
 | Turkish names | Yes: small second line under the English name. |
-| Palette & fonts | Keep: navy #14213D, Iznik cobalt #1F4FA3, pomegranate #C4462E, map ground #EEEBE3; Bricolage Grotesque + Inter. All in `app/theme.json`. |
-| Theme presets | Ship current look first; more presets later (proposed: Bosphorus at Night, Tea & Simit, Tile White, Gül). |
+| Palette & fonts | Keep: navy #14213D, Iznik cobalt #1F4FA3, pomegranate #C4462E, map ground #EEEBE3. Font: **Figtree** (changed 2026-11-05 at Cem's request: "a font better for an application"; Geist offered as option). All in `app/themes/`. |
+| Theme presets | 5 presets (Iznik Navy, Bosphorus at Night, Tea & Simit, Tile White, Gül). **Everyone can pick** one on the Saved screen ("Look"); `?edit=1` is the full editor. |
+| Splash | Each app open: countdown (copy gets more excited as the trip nears), trip-days forecast + sunsets, "Explore Istanbul". Replaces the old top bar; a days badge in the search bar reopens it. `?splash=0` skips it. |
+| Discovery | Every place is always at least a small category-coloured dot; icons appear by tier zoom on top. Tapping a dot zooms in. |
+| Offline | Service worker (https or localhost). "Save for offline" on the Saved screen caches basemap tiles z10–14 for the area + one thumbnail per place + first big photo of top places (~60 MB). Add to Home Screen via `manifest.webmanifest`. |
 | Edit mode | `?edit=1` (hidden, not secure). |
 | Mock forecast | Opt-in toggle (edit mode or `?mockweather=1`), always labelled "Sample forecast". Never shown by default. |
 | Photo credits | No credit on each photo. Author + licence kept in data, shown on one small "Photo credits" screen. |
@@ -188,4 +191,8 @@ Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrase
 - **Category rules: EXCLUDE words hide real sights** (2026-11-05): "road bridge" hit `road`, districts hit `municipality`.
   Use a KEEP list and re-run `scripts/analysis_coverage.py` after changing rules.
 - **Heredoc + Python string escapes can write control characters** (2026-11-05): `\b` became a backspace in a regex. Edit files with the Edit tool, not string-replace scripts.
+- **Wikimedia thumbnails: standard widths only** (2026-11-05): use 120/250/330/500/960/1280 (`photoUrl` snaps up). Some
+  Wikidata P18 file names arrive URL-encoded (`%20`); decode before `encodeURIComponent` or every link breaks.
+- **Study area smoothing can drop real sights** (2026-11-05): an open (erode/dilate) of 1.5 km+ cut off Yedikule and the
+  Golden Gate. After changing `CLOSE_M`/`OPEN_M`, check no place in places.geojson falls outside (v2: close 4 km, open 1 km).
 - **data.ibb.gov.tr timed out from here** (2026-11-05): Istanbul's open-data portal may block non-Turkish IPs; don't depend on it.

@@ -1,11 +1,16 @@
 {
   "id": "iznik-navy",
   "label": "Iznik Navy",
-  "app": { "name": "Our Istanbul Tour", "short": "Istanbul", "logo": null, "favicon": null },
+  "app": {
+    "name": "Our Istanbul Tour",
+    "short": "Istanbul",
+    "logo": null,
+    "favicon": null
+  },
   "fonts": {
-    "heading": "Bricolage Grotesque",
-    "body": "Inter",
-    "googleFonts": "family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700"
+    "heading": "Figtree",
+    "body": "Figtree",
+    "googleFonts": "family=Figtree:wght@400..800"
   },
   "colors": {
     "ground": "#EEEBE3",
@@ -52,7 +57,7 @@
     "ferry": "#1B7F95",
     "rail": "#4A5468"
   },
-  "radius": 18,
+  "radius": 14,
   "shadow": 0.14,
   "basemap": "positron",
   "pinStyle": "outlined",

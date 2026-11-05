@@ -6,6 +6,11 @@
   <meta name="theme-color" content="">
   <meta name="description" content="Our family's map of Istanbul: photos, favourites and a loose plan for each day.">
   <title>Our Istanbul Tour</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon.svg">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
@@ -18,22 +23,13 @@
   <div id="app" class="app">
     <!-- Explore -->
     <section id="screen-explore" class="screen is-active" aria-label="Explore">
-      <header class="topbar">
-        <button id="countdown" class="countdown" aria-expanded="false" aria-controls="forecast-panel">
-          <img id="logo" class="logo" alt="" hidden>
-          <span class="countdown-main"><b id="cd-num">–</b> <span id="cd-label">days to go</span></span>
-          <span class="countdown-sub" id="cd-sub">Istanbul · Fri to Mon</span>
-          <span class="countdown-chev" data-icon="chevronDown"></span>
-        </button>
-        <div id="forecast-panel" class="forecast-panel" hidden></div>
-      </header>
-
       <div class="search-wrap">
-        <label class="search">
+        <div class="search">
           <span data-icon="search"></span>
-          <input id="search" type="search" placeholder="Search anything: places, areas, food…" autocomplete="off" enterkeyhint="search" aria-label="Search anything">
+          <input id="search" type="search" placeholder="Search anything" autocomplete="off" enterkeyhint="search" aria-label="Search places, areas, food">
           <button id="search-clear" class="icon-btn small" hidden aria-label="Clear search"><span data-icon="close"></span></button>
-        </label>
+          <button id="trip-badge" class="trip-badge" aria-label="Trip countdown and forecast"><img id="logo" class="logo" alt="" hidden><span id="trip-badge-txt">–</span></button>
+        </div>
         <div id="chips" class="chips" role="toolbar" aria-label="Filters"></div>
       </div>
 
@@ -65,6 +61,12 @@
         <div id="saved-tabs" class="seg" role="tablist"></div>
         <div id="saved-top"></div>
         <div id="saved-list" class="saved-grid"></div>
+        <section class="settings" aria-label="Settings">
+          <h2 class="settings-title"><span data-icon="palette"></span> Look</h2>
+          <div id="theme-picker" class="theme-picker" role="radiogroup" aria-label="App look"></div>
+          <h2 class="settings-title"><span data-icon="offline"></span> Offline</h2>
+          <div id="offline-box" class="offline-box"></div>
+        </section>
         <button id="open-credits" class="link-btn credits-link">Photo credits &amp; data sources</button>
       </div>
     </section>
@@ -86,6 +88,9 @@
         <div id="plan-tray"></div>
       </div>
     </section>
+
+    <!-- Splash: countdown + trip forecast -->
+    <section id="splash" class="splash" aria-label="Welcome" hidden></section>
 
     <!-- Place card (overlay) -->
     <article id="place" class="place" hidden aria-modal="true" role="dialog" aria-labelledby="place-name"></article>

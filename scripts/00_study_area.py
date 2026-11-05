@@ -13,7 +13,13 @@ from lib import DATA, overpass, round_coords, write_geojson
 DISTRICTS = ["Fatih", "Beyoğlu", "Beşiktaş", "Şişli", "Kâğıthane", "Sarıyer", "Eyüpsultan", "Üsküdar", "Kadıköy", "Beykoz"]
 COAST_BOX = (40.94, 28.76, 41.32, 29.38)  # same query box as analysis_inland_distance.py (cache reuse)
 BAND_M = 4000
-SMOOTH_M = 1500
+SMOOTH_M = 1500  # v1 value, kept for the record
+# v2 (2026-11-05, Cem: "smooth it out, join up the gap"): a 4 km close bridges the ~3 km Bosphorus mouth
+# between Sarayburnu and Kadıköy and rounds the outline. Open kept at 1 km: 1.5 km+ cut off Yedikule / Golden Gate.
+# Check after changing: no place in places.geojson may fall outside.
+import os
+CLOSE_M = int(os.environ.get("CLOSE_M", 4000))
+OPEN_M = int(os.environ.get("OPEN_M", 1000))
 
 # Local metric projection (equirectangular at 41°N) — fine at city scale.
 K_LON, K_LAT = 84_000.0, 111_100.0
@@ -53,8 +59,8 @@ coast_m = affine_transform(unary_union(coast), to_m)
 land_m = affine_transform(land, to_m)
 
 area_m = coast_m.buffer(BAND_M).intersection(land_m.buffer(300))  # small buffer keeps the water between shores
-area_m = area_m.buffer(SMOOTH_M).buffer(-SMOOTH_M)      # close: fill gaps, join both shores across the strait
-area_m = area_m.buffer(-SMOOTH_M / 2).buffer(SMOOTH_M / 2)  # open: round off spikes
+area_m = area_m.buffer(CLOSE_M).buffer(-CLOSE_M)  # close: fill gaps, join both shores and the Marmara mouth
+area_m = area_m.buffer(-OPEN_M).buffer(OPEN_M)    # open: round off spikes and narrow tips
 if area_m.geom_type == "MultiPolygon":
     area_m = max(area_m.geoms, key=lambda g: g.area)
 area_m = area_m.simplify(120)
@@ -64,7 +70,7 @@ print("study area ≈ %.0f km², bounds %s" % (area_m.area / 1e6, tuple(round(v,
 write_geojson(DATA / "study_area.geojson", [{
     "type": "Feature",
     "properties": {"name": "Study area", "districts": DISTRICTS, "band_m": BAND_M,
-                   "smooth_m": SMOOTH_M, "source": "osm natural=coastline buffered, within osm admin_level=6 districts, smoothed"},
+                   "close_m": CLOSE_M, "open_m": OPEN_M, "source": "osm natural=coastline buffered, within osm admin_level=6 districts, smoothed"},
     "geometry": round_coords(mapping(area), 5)}])
 mask = box(-180, -85, 180, 85).difference(area)
 write_geojson(DATA / "study_mask.geojson", [{"type": "Feature", "properties": {"name": "Outside study area"},

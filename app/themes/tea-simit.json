@@ -1,0 +1,50 @@
+{
+  "id": "tea-simit",
+  "label": "Tea & Simit",
+  "app": { "name": "Our Istanbul Tour", "short": "Istanbul", "logo": null, "favicon": null },
+  "fonts": {
+    "heading": "Fraunces",
+    "body": "Work Sans",
+    "googleFonts": "family=Fraunces:opsz,wght@9..144,600..800&family=Work+Sans:wght@400;500;600;700"
+  },
+  "colors": {
+    "ground": "#F3E9DA",
+    "surface": "#FFFAF2",
+    "surface-2": "#F7EEE0",
+    "line": "#E6D7C2",
+    "ink": "#3A2416",
+    "ink-2": "#6A5040",
+    "ink-inverse": "#FFFAF2",
+    "navy": "#5A2E1A",
+    "primary": "#9C4A1A",
+    "primary-ink": "#FFFAF2",
+    "accent": "#B93A27",
+    "accent-ink": "#FFFAF2",
+    "golden": "#F8E7C4",
+    "golden-ink": "#5E3B00",
+    "success": "#3E6B4E",
+    "scrim": "rgba(58,36,22,0.45)",
+    "map-land": "#F3E9DA",
+    "map-water": "#CBDADB",
+    "map-park": "#E2E3C8",
+    "map-road": "#FFFAF2",
+    "map-label": "#6A5040",
+    "mask": "#F3E9DA"
+  },
+  "categories": {
+    "Mosques & churches": "#2F5D8C",
+    "Palaces & museums": "#7A3E6B",
+    "Viewpoints": "#B93A27",
+    "Bazaars & markets": "#8A5A1E",
+    "Food & drink": "#9A5800",
+    "Neighbourhoods": "#3E6B4E",
+    "Parks & waterfront": "#557A2F"
+  },
+  "routes": { "ferry": "#2F6F7E", "walk": "#B93A27", "boat": "#2F5D8C" },
+  "transit": { "metro": "#B93A27", "tram": "#2F5D8C", "funicular": "#7A3E6B", "ferry": "#2F6F7E", "rail": "#6A5040" },
+  "radius": 22,
+  "shadow": 0.12,
+  "basemap": "voyager",
+  "pinStyle": "outlined",
+  "maskOpacity": 0.7
+}

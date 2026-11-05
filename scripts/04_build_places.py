@@ -50,6 +50,27 @@ def tier(f):
     return "must-see" if f >= 3.9 else "worth-it" if f >= 3.0 else "bonus"
 
 
+def timing(category, classes):
+    """Category defaults for best_time + indoor (rain-proof). Marked best_time_basis='default'; refine per place later."""
+    j = " | ".join(classes).lower()
+    if category == "Mosques & churches":
+        return "morning", True
+    if category == "Viewpoints":
+        return "golden-hour", False
+    if category == "Bazaars & markets":
+        return ("midday", True) if re.search(r"bazaar|shopping center|arcade|han\b", j) else ("morning", False)
+    if category == "Food & drink":
+        return "evening", True
+    if category == "Neighbourhoods":
+        return "afternoon", False
+    if category == "Parks & waterfront":
+        return ("morning", False) if "cemetery" in j else ("afternoon", False)
+    # Palaces & museums (incl. folded fortifications)
+    if re.search(r"fortress|fortification|castle|wall|gate|aqueduct|column|obelisk|monument|hippodrome|fountain", j):
+        return "afternoon", False
+    return "midday", True
+
+
 feats, used = [], Counter()
 for c in cands:
     pt = Point(c["lon"], c["lat"])
@@ -59,6 +80,7 @@ for c in cands:
     used[base] += 1
     pid = base if used[base] == 1 else f"{base}-{used[base]}"
     img = c.get("image")
+    best, indoor = timing(FOLD.get(c["category"], c["category"]), c["classes"])
     feats.append({
         "type": "Feature",
         "properties": {
@@ -68,7 +90,7 @@ for c in cands:
                             "pageviews_12m": c.get("pageviews_12m")},
             "area": district, "mahalle": m.get("name"), "shore": "asia" if district in ASIA else "europe",
             "blurb": desc.get(c["qid"]), "blurb_status": "placeholder-wikidata",
-            "tip": None, "indoor": None, "best_time": None,
+            "tip": None, "indoor": indoor, "best_time": best, "best_time_basis": "default",
             "photos": [{"file": img.rsplit("/", 1)[1]}] if img else [],
             "wikidata": c["qid"], "wikipedia": c["wikipedia"], "source": f"wikidata:{c['qid']}",
         },

@@ -1,0 +1,50 @@
+{
+  "id": "gul",
+  "label": "Gül (rose & olive)",
+  "app": { "name": "Our Istanbul Tour", "short": "Istanbul", "logo": null, "favicon": null },
+  "fonts": {
+    "heading": "DM Serif Display",
+    "body": "DM Sans",
+    "googleFonts": "family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700"
+  },
+  "colors": {
+    "ground": "#F6EDEE",
+    "surface": "#FFFFFF",
+    "surface-2": "#FAF3F4",
+    "line": "#EBDADD",
+    "ink": "#2A1A20",
+    "ink-2": "#66505A",
+    "ink-inverse": "#FFFFFF",
+    "navy": "#4A1F33",
+    "primary": "#8E2C55",
+    "primary-ink": "#FFFFFF",
+    "accent": "#56702A",
+    "accent-ink": "#FFFFFF",
+    "golden": "#F7EBD3",
+    "golden-ink": "#5E4400",
+    "success": "#56702A",
+    "scrim": "rgba(42,26,32,0.45)",
+    "map-land": "#F6EDEE",
+    "map-water": "#D6DFE6",
+    "map-park": "#E4E8D4",
+    "map-road": "#FFFFFF",
+    "map-label": "#66505A",
+    "mask": "#F6EDEE"
+  },
+  "categories": {
+    "Mosques & churches": "#2F5D8C",
+    "Palaces & museums": "#8E2C55",
+    "Viewpoints": "#C2412D",
+    "Bazaars & markets": "#8A5A1E",
+    "Food & drink": "#9A5800",
+    "Neighbourhoods": "#56702A",
+    "Parks & waterfront": "#3E7A3A"
+  },
+  "routes": { "ferry": "#2F6F7E", "walk": "#8E2C55", "boat": "#2F5D8C" },
+  "transit": { "metro": "#C2412D", "tram": "#2F5D8C", "funicular": "#8E2C55", "ferry": "#2F6F7E", "rail": "#66505A" },
+  "radius": 20,
+  "shadow": 0.12,
+  "basemap": "voyager",
+  "pinStyle": "outlined",
+  "maskOpacity": 0.7
+}

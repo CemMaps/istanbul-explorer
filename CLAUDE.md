@@ -163,8 +163,15 @@ Prominence on the map: `must-see` shows from low zoom; `worth-it` mid zoom; `bon
       Explore (countdown, forecast panel, search, chips, tiered pins, mask, shore badge, near me/home, sheet, Right now),
       Place card (gallery, heart, days + undo, Getting there, Close by, quiet Google Maps). Basic Saved + Plan.
       `scripts/qa_theme.py` enforces no hard-coded colours/fonts. 🛑 Cem tests on phone
-- [ ] Phase 4 — Plan, weather, Right now, Saved & share 🛑 Cem tests on phone
-- [ ] Phase 5 — presets, edit mode, states, a11y, deploy
+      UI fixes (2026-11-05): sheet closed/peek/open, filters + search zoom to results (all tiers shown while filtering),
+      shore badge removed, "Search anything" (names, Turkish names, areas, categories, dishes), ground-colour page background.
+- [~] Phase 4 — built 2026-11-05: name prompt, Plan (day tabs, part-of-day weather strip, As added / Suggested via `plan.js`,
+      fixed Fri arrival / Mon airport stops, tray of unplanned saves, read-only view of others' snapshots),
+      Saved & share (`share.js`: compact `#from=…&p=` links, lz fallback, Mine / per-person / Matches, merge, remove),
+      Right now uses live weather during the trip. 🛑 Cem tests on phone
+- [~] Phase 5 — built: 5 presets in `app/themes/`, `?edit=1` editor (`edit.js`: preset, name, logo, fonts, corners, colours
+      with contrast check, basemap, pins, sample-forecast toggle, save locally / export theme.json), credits screen,
+      offline `sw.js` (https only). To do: a11y pass, loading/empty polish, deploy.
 
 Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrases, PWA install, transport layer, live sync.
 

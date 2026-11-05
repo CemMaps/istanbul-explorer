@@ -80,7 +80,8 @@ export async function createMap({ container, theme, config, data, onPlace }) {
       layout: {
         "icon-image": ["concat", "pin-", ["get", "catslug"]],
         "icon-size": ["interpolate", ["linear"], ["zoom"], 10, t.size * 0.62, 14, t.size * 0.82, 17, t.size],
-        "icon-allow-overlap": tier === "must-see", "icon-padding": 1,
+        // Collisions on: at city zoom the most famous pins win instead of piling up.
+        "icon-allow-overlap": false, "icon-padding": 1,
         "symbol-sort-key": ["-", 0, ["get", "score"]],
         "text-field": ["step", ["zoom"], "", labelFrom, ["get", "name"]],
         "text-font": tier === "must-see" ? FONT_BOLD : FONT_REG, "text-size": tier === "must-see" ? 12.5 : 11.5,
@@ -128,8 +129,19 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
   }
 
+  const tierZoom = Object.fromEntries(placeLayers.map((id) => [id, map.getLayer(id).minzoom || 0]));
+  const baseFilter = Object.fromEntries(placeLayers.map((id) => [id, map.getFilter(id)]));
   return {
     map,
+    // While a filter/search is active, matching places show at every zoom (so "zoom to results" works);
+    // non-matching lesser places are hidden rather than dimmed, so the zoomed-out map stays readable.
+    showAllTiers(on) {
+      for (const [id, z] of Object.entries(tierZoom)) {
+        const lesser = !id.endsWith("must-see");
+        map.setLayerZoomRange(id, on ? 0 : z, 24);
+        map.setFilter(id, on && lesser ? ["all", baseFilter[id], ["!", ["get", "dim"]]] : baseFilter[id]);
+      }
+    },
     setPlaces: (fc) => map.getSource("places").setData(fc),
     select: (id) => map.setFilter("selected", ["==", ["get", "id"], id || ""]),
     setMe: (lngLat) => map.getSource("me").setData({ type: "FeatureCollection",

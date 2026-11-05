@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="">
+  <meta name="description" content="Our family's map of Istanbul: photos, favourites and a loose plan for each day.">
   <title>Our Istanbul Tour</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,6 +12,7 @@
   <link rel="stylesheet" href="styles.css">
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
+  <script src="https://unpkg.com/lz-string@1.5.0/libs/lz-string.min.js"></script>
 </head>
 <body>
   <div id="app" class="app">
@@ -18,6 +20,7 @@
     <section id="screen-explore" class="screen is-active" aria-label="Explore">
       <header class="topbar">
         <button id="countdown" class="countdown" aria-expanded="false" aria-controls="forecast-panel">
+          <img id="logo" class="logo" alt="" hidden>
           <span class="countdown-main"><b id="cd-num">–</b> <span id="cd-label">days to go</span></span>
           <span class="countdown-sub" id="cd-sub">Istanbul · Fri to Mon</span>
           <span class="countdown-chev" data-icon="chevronDown"></span>
@@ -28,21 +31,21 @@
       <div class="search-wrap">
         <label class="search">
           <span data-icon="search"></span>
-          <input id="search" type="search" placeholder="Try Galata, baklava, palace…" autocomplete="off" aria-label="Search places">
+          <input id="search" type="search" placeholder="Search anything: places, areas, food…" autocomplete="off" enterkeyhint="search" aria-label="Search anything">
           <button id="search-clear" class="icon-btn small" hidden aria-label="Clear search"><span data-icon="close"></span></button>
         </label>
         <div id="chips" class="chips" role="toolbar" aria-label="Filters"></div>
       </div>
 
       <div id="map" class="map" aria-label="Map"></div>
-      <div id="side-badge" class="side-badge" hidden></div>
       <div class="map-buttons">
         <button id="btn-near" class="fab" aria-label="Near me"><span data-icon="locate"></span></button>
         <button id="btn-home" class="fab" aria-label="Centre on our flat"><span data-icon="home"></span></button>
       </div>
 
-      <section id="sheet" class="sheet" aria-label="Places in view">
-        <button class="sheet-handle" id="sheet-handle" aria-label="Expand list"><span></span></button>
+      <section id="sheet" class="sheet" data-state="peek" aria-label="Places in view">
+        <button class="sheet-handle" id="sheet-handle" aria-label="Drag or tap to resize the list"><span></span></button>
+        <button id="sheet-bar" class="sheet-bar"><span id="sheet-bar-txt">Show places</span><span data-icon="chevronDown"></span></button>
         <div class="sheet-body" id="sheet-body">
           <button id="rightnow" class="rightnow" hidden></button>
           <div class="sheet-head">
@@ -59,21 +62,36 @@
     <section id="screen-saved" class="screen" aria-label="Saved">
       <div class="page">
         <h1 class="page-title">Saved</h1>
+        <div id="saved-tabs" class="seg" role="tablist"></div>
+        <div id="saved-top"></div>
         <div id="saved-list" class="saved-grid"></div>
+        <button id="open-credits" class="link-btn credits-link">Photo credits &amp; data sources</button>
       </div>
     </section>
 
     <!-- Plan -->
     <section id="screen-plan" class="screen" aria-label="Plan">
       <div class="page">
-        <h1 class="page-title">Our plan</h1>
+        <div class="plan-head">
+          <h1 class="page-title" id="plan-title">Our plan</h1>
+          <select id="plan-who" class="who" aria-label="Whose plan"></select>
+        </div>
         <div id="plan-tabs" class="day-tabs" role="tablist"></div>
-        <div id="plan-body"></div>
+        <div id="plan-weather"></div>
+        <div id="plan-mode" class="seg two" role="tablist">
+          <button role="tab" data-mode="added">As added</button>
+          <button role="tab" data-mode="suggested"><span data-icon="sparkle"></span> Suggested</button>
+        </div>
+        <div id="plan-body" class="timeline"></div>
+        <div id="plan-tray"></div>
       </div>
     </section>
 
     <!-- Place card (overlay) -->
     <article id="place" class="place" hidden aria-modal="true" role="dialog" aria-labelledby="place-name"></article>
+
+    <!-- Dialogs -->
+    <div id="dialog" class="dialog" hidden role="dialog" aria-modal="true"><div class="dialog-card" id="dialog-card"></div></div>
 
     <nav class="tabbar" aria-label="Main">
       <button class="tab is-active" data-screen="explore"><span data-icon="compass"></span><span>Explore</span></button>

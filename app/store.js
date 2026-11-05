@@ -14,6 +14,7 @@ function save() {
 
 export const store = {
   get: () => state,
+  setName(name) { state.name = name; save(); },
   on: (fn) => listeners.add(fn),
   isHearted: (id) => state.hearts.includes(id),
   toggleHeart(id) {

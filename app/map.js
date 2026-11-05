@@ -88,7 +88,9 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     map.addImage(`pin-${slug(c.id)}-sel`, await pinImage(c.icon, col, bg, { filled: !pinFilled }), { pixelRatio: 2 });
   }
   const navy = cssVar("--c-navy");
-  map.addImage("pin-home", await pinImage("home", navy, bg, { filled: true }), { pixelRatio: 2 });
+  // On the dark basemap the navy home pin disappears: white icon + light outline there.
+  const dark = theme.basemap === "dark";
+  map.addImage("pin-home", await pinImage("home", navy, bg, dark ? { filled: true, inkColor: cssVar("--c-ink-inverse"), ring: cssVar("--c-ink-inverse") } : { filled: true }), { pixelRatio: 2 });
   map.addImage("pin-airport", await pinImage("plane", navy, bg, { filled: true }), { pixelRatio: 2 });
 
   // Mask outside the study area.

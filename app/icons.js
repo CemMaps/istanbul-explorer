@@ -51,13 +51,13 @@ export function icon(name, size = 22, extra = "") {
 }
 
 // Map pin image: round badge with a category icon. Outlined = white fill + coloured ring/icon; filled = inverse.
-export function pinImage(name, color, bg, { filled = false, px = 44, ratio = 2 } = {}) {
+export function pinImage(name, color, bg, { filled = false, px = 44, ratio = 2, inkColor, ring } = {}) {
   const s = px * ratio;
   const ringW = 2.4;
   const fill = filled ? color : bg;
-  const ink = filled ? bg : color;
+  const ink = inkColor || (filled ? bg : color);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 44 44">
-    <circle cx="22" cy="22" r="${20 - ringW / 2}" fill="${fill}" stroke="${color}" stroke-width="${ringW}"/>
+    <circle cx="22" cy="22" r="${20 - ringW / 2}" fill="${fill}" stroke="${ring || color}" stroke-width="${ringW}"/>
     <g transform="translate(11 11) scale(0.9167)" fill="none" stroke="${ink}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${P[name] || ""}</g>
   </svg>`;
   return new Promise((resolve) => {

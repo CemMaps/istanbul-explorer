@@ -450,7 +450,7 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 /* Theme picker: small round swatches */
 .theme-picker { display: flex; gap: 16px; overflow-x: auto; padding: 2px 2px 14px; border-bottom: 1px solid var(--c-line); scrollbar-width: none; }
 .tp { flex: none; width: 56px; align-items: center; text-align: center; gap: 6px; }
-.tp-sw { display: block; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 0; background: conic-gradient(var(--tp-a) 0 50%, var(--tp-b) 0 75%, var(--tp-c) 0); box-shadow: 0 0 0 1px var(--c-line); }
+.tp-sw { display: block; width: 36px; height: 36px; padding: 0; border-radius: 50%; border: 0; background: var(--tp-b); box-shadow: 0 0 0 1px var(--c-line); }
 .tp-sw i { display: none; }
 .tp[aria-checked="true"] .tp-sw { box-shadow: 0 0 0 2px var(--c-surface), 0 0 0 4px var(--c-primary); }
 .tp-name { font-size: 11.5px; font-weight: 500; color: var(--c-ink-2); }

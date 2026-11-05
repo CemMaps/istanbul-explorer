@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Data preview</title>
+<!-- Dev-only preview of the Phase 1 working data. Not part of the app; theme rules don't apply here. -->
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; font: 14px/1.4 system-ui, sans-serif; background: #eeebe3; color: #14213d; }
+  #map { position: absolute; inset: 0; }
+  #panel { position: absolute; top: 10px; left: 10px; background: #fff; border-radius: 12px; padding: 10px 12px;
+           box-shadow: 0 2px 10px rgba(0,0,0,.15); max-width: 260px; max-height: 80vh; overflow: auto; }
+  #panel h1 { font-size: 15px; margin: 0 0 6px; }
+  .row { display: flex; align-items: center; gap: 6px; margin: 2px 0; }
+  .sw { width: 12px; height: 12px; border-radius: 50%; flex: none; }
+  .line { width: 16px; height: 3px; flex: none; }
+  label { cursor: pointer; }
+  .maplibregl-popup-content { max-width: 260px; }
+  .maplibregl-popup-content img { width: 100%; border-radius: 8px; margin-bottom: 6px; }
+  small { color: #555; }
+</style>
+</head>
+<body>
+<div id="map"></div>
+<div id="panel">
+  <h1>Phase 1 data preview</h1>
+  <div id="stats"><small>Loading…</small></div>
+  <div id="legend"></div>
+  <hr>
+  <div class="row"><label><input type="checkbox" id="t-mah" checked> Neighbourhoods</label></div>
+  <div class="row"><label><input type="checkbox" id="t-fer" checked> Ferry lines</label></div>
+  <div class="row"><label><input type="checkbox" id="t-stop"> Stations &amp; piers</label></div>
+  <div class="row"><label><input type="checkbox" id="t-out"> Show points outside study area</label></div>
+  <small>Big = must-see, medium = worth-it, small = bonus (provisional).</small>
+</div>
+<script>
+const CAT = {
+  "Mosques & churches": "#1f4fa3", "Palaces & museums": "#7b3fa0", "Viewpoints": "#c4462e",
+  "Bazaars & markets": "#a8641e", "Food & drink": "#d18b00", "Neighbourhoods": "#2f7d6d",
+  "Parks & waterfront": "#3c8d3a", "Fortifications": "#6b6b6b"
+};
+const MODE = { metro: "#e3001b", tram: "#0a7ac0", funicular: "#7b3fa0", ferry: "#0b8fa8", rail: "#555" };
+
+const map = new maplibregl.Map({
+  container: "map",
+  style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  center: [28.99, 41.04], zoom: 11.6
+});
+map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+const get = p => fetch(p).then(r => r.ok ? r.json() : null).catch(() => null);
+
+map.on("load", async () => {
+  const [study, mah, fer, stops, cands] = await Promise.all([
+    get("../data/study_area.geojson"), get("../data/mahalles.geojson"), get("../data/ferries.geojson"),
+    get("../data/stops.geojson"), get("../data/work/candidates.geojson")
+  ]);
+  const mask = await get("../data/study_mask.geojson");
+  if (mask) {
+    map.addSource("mask", { type: "geojson", data: mask });
+    map.addLayer({ id: "mask", type: "fill", source: "mask", paint: { "fill-color": "#eeebe3", "fill-opacity": 0.78 } });
+  }
+  if (study) {
+    map.addSource("study", { type: "geojson", data: study });
+    map.addLayer({ id: "study", type: "line", source: "study", paint: { "line-color": "#14213d", "line-width": 2, "line-dasharray": [2, 2] } });
+  }
+  if (mah) {
+    map.addSource("mah", { type: "geojson", data: mah });
+    map.addLayer({ id: "mah", type: "line", source: "mah", paint: { "line-color": "#14213d", "line-opacity": .25, "line-width": .6 } });
+    map.addLayer({ id: "mah-lbl", type: "symbol", source: "mah", minzoom: 13,
+      layout: { "text-field": ["get", "name"], "text-size": 10, "text-font": ["Montserrat Regular", "Open Sans Regular"] },
+      paint: { "text-color": "#14213d", "text-opacity": .5, "text-halo-color": "#fff", "text-halo-width": 1 } });
+  }
+  if (fer) {
+    map.addSource("fer", { type: "geojson", data: fer });
+    map.addLayer({ id: "fer", type: "line", source: "fer", paint: { "line-color": "#0b8fa8", "line-width": 1.6, "line-dasharray": [3, 2] } });
+  }
+  if (stops) {
+    map.addSource("stops", { type: "geojson", data: stops });
+    map.addLayer({ id: "stops", type: "circle", source: "stops", layout: { visibility: "none" },
+      paint: { "circle-radius": 3.5, "circle-color": ["match", ["get", "mode"], ...Object.entries(MODE).flat(), "#555"],
+               "circle-stroke-color": "#fff", "circle-stroke-width": 1 } });
+  }
+  if (cands) {
+    map.addSource("c", { type: "geojson", data: cands });
+    map.addLayer({ id: "c", type: "circle", source: "c", filter: ["==", ["get", "in_study_area"], true],
+      paint: {
+        "circle-radius": ["match", ["get", "tier"], "must-see", 8, "worth-it", 5, 3.2],
+        "circle-color": ["match", ["get", "category"], ...Object.entries(CAT).flat(), "#999"],
+        "circle-stroke-color": "#fff", "circle-stroke-width": 1.2,
+        "circle-opacity": ["match", ["get", "tier"], "bonus", .65, .95]
+      } });
+    map.addLayer({ id: "c-lbl", type: "symbol", source: "c", filter: ["all", ["==", ["get", "in_study_area"], true], ["==", ["get", "tier"], "must-see"]],
+      layout: { "text-field": ["get", "name"], "text-size": 11, "text-offset": [0, 1.2], "text-anchor": "top",
+                "text-font": ["Montserrat Medium", "Open Sans Semibold"] },
+      paint: { "text-color": "#14213d", "text-halo-color": "#fff", "text-halo-width": 1.4 } });
+
+    const f = cands.features, inside = f.filter(x => x.properties.in_study_area);
+    const by = (k) => inside.reduce((a, x) => (a[x.properties[k]] = (a[x.properties[k]] || 0) + 1, a), {});
+    const tiers = by("tier"), cats = by("category");
+    document.getElementById("stats").innerHTML =
+      `<b>${inside.length}</b> candidates in study area <small>(${f.length - inside.length} outside)</small><br>
+       <small>must-see ${tiers["must-see"] || 0} · worth-it ${tiers["worth-it"] || 0} · bonus ${tiers["bonus"] || 0}</small><br>
+       <small>${mah ? mah.features.length + " neighbourhoods · " : ""}${fer ? fer.features.length + " ferry routes · " : ""}${stops ? stops.features.length + " stops" : ""}</small>`;
+    document.getElementById("legend").innerHTML = Object.entries(CAT).map(([k, c]) =>
+      `<div class="row"><span class="sw" style="background:${c}"></span>${k} <small>${cats[k] || 0}</small></div>`).join("") +
+      `<div class="row"><span class="line" style="background:#0b8fa8"></span>Ferry lines</div>`;
+
+    map.on("click", "c", e => {
+      const p = e.features[0].properties;
+      const img = p.image && p.image !== "null"
+        ? `<img src="https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(decodeURIComponent(p.image.split("/").pop()))}?width=320" alt="">` : "";
+      new maplibregl.Popup().setLngLat(e.lngLat).setHTML(
+        `${img}<b>${p.name || p.qid}</b><br><small>${p.name_tr && p.name_tr !== "null" ? p.name_tr : ""}</small><br>
+         ${p.category} · <b>${p.tier}</b> (fame ${p.fame})<br>
+         <small>${p.sitelinks} sitelinks · ${p.pageviews_60d ?? "?"} views (60 days)<br>${p.classes}<br>
+         <a href="https://www.wikidata.org/wiki/${p.qid}" target="_blank" rel="noopener">${p.qid}</a></small>`).addTo(map);
+    });
+    map.on("mouseenter", "c", () => map.getCanvas().style.cursor = "pointer");
+    map.on("mouseleave", "c", () => map.getCanvas().style.cursor = "");
+  }
+  const vis = (id, on) => map.getLayer(id) && map.setLayoutProperty(id, "visibility", on ? "visible" : "none");
+  document.getElementById("t-mah").onchange = e => { vis("mah", e.target.checked); vis("mah-lbl", e.target.checked); };
+  document.getElementById("t-fer").onchange = e => vis("fer", e.target.checked);
+  document.getElementById("t-stop").onchange = e => vis("stops", e.target.checked);
+  document.getElementById("t-out").onchange = e => {
+    const flt = e.target.checked ? null : ["==", ["get", "in_study_area"], true];
+    map.setFilter("c", flt);
+  };
+});
+</script>
+</body>
+</html>

@@ -105,6 +105,23 @@ is the catch-all for built-up land and "Green & open" for unbuilt land, so nothi
 **In the app:** a "Vibe map" toggle shows a soft translucent fill under the pins plus a legend; off by default.
 Classes 1–8 get distinct colours (≤8 categorical hues), 9 and 10 stay neutral.
 
+## Lifestyle — second, independent dimension (2026-11-05)
+Istanbul runs from Bodrum-style secular and European-feeling to traditional and observant, often side by side.
+This is a **separate field** from area character, so any combination works (e.g. Green & open + Traditional,
+Modern & upmarket + Cosmopolitan, Market & trade + Mixed).
+
+| Value | What a visitor notices | Examples (to verify) |
+|---|---|---|
+| `cosmopolitan` | Secular, European-leaning; bars and meyhanes everywhere, relaxed dress, late nights | Cihangir, Kadıköy/Moda, Bebek, Nişantaşı |
+| `mixed` | Both side by side: mosques and meyhanes on the same street | Beşiktaş, Üsküdar centre, Karaköy, Balat |
+| `traditional` | Conservative and family-centred; little or no alcohol, modest dress common, quiet evenings | Çarşamba/Fatih, Eyüp |
+
+- Describes **street life**, not anyone's beliefs. Useful for practical things: where you'll find a drink, what to wear in a mosque-heavy area.
+- Evidence per mahalle: share of alcohol-serving venues (bars, meyhanes, wine shops) vs mosques and family tea houses in Overture,
+  plus Wikivoyage, published research and judgement. **No election or vote data.**
+- Stored on every mahalle/area (`lifestyle`) and inherited by places. Shown in words on cards ("Bohemian · Cosmopolitan").
+  The Vibe map can switch between "Character" and "Lifestyle" colouring (a 3-step diverging scale for lifestyle).
+
 ## Categories (pin icons)
 Mosques & churches · Palaces & museums · Viewpoints · Bazaars & markets · Food & drink · Neighbourhoods · Parks & waterfront.
 Line layers: Walks · Boat trips · Ferry lines. Area layer: Vibe map. Fixed: the flat, SAW airport.
@@ -127,7 +144,7 @@ Line layers: Walks · Boat trips · Ferry lines. Area layer: Vibe map. Fixed: th
 `data/boat_trips.geojson`: `id`, `name`, `blurb`, `best_time`, `duration_hint`, piers from sourced coordinates, `approx: true` for the route line.
 `data/ferries.geojson`: ferry lines from OSM `route=ferry` (operator, ref, name, piers).
 `data/stops.geojson`: metro/tram/funicular stations and ferry piers (name, mode, lines) → feeds "Getting there".
-`data/areas.geojson`: merged character areas: `primary`, `secondary`, `mahalles`, `evidence`, `notes`.
+`data/areas.geojson`: merged character areas: `primary`, `secondary`, `lifestyle`, `mahalles`, `evidence`, `notes`.
 Places also get `getting_there`: [{stop, mode, lines, walk_m}] (computed) + optional `getting_there_note`.
 `data/fixed.geojson`: the flat, SAW airport.
 `data/study_area.geojson`: Bosphorus-centred study polygon for QA outlier checks.

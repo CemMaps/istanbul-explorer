@@ -1,0 +1,60 @@
+{
+  "id": "iznik-navy",
+  "label": "Iznik Navy",
+  "app": { "name": "Our Istanbul Tour", "short": "Istanbul", "logo": null, "favicon": null },
+  "fonts": {
+    "heading": "Bricolage Grotesque",
+    "body": "Inter",
+    "googleFonts": "family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Inter:wght@400;500;600;700"
+  },
+  "colors": {
+    "ground": "#EEEBE3",
+    "surface": "#FFFFFF",
+    "surface-2": "#F6F4EF",
+    "line": "#E3DFD6",
+    "ink": "#14213D",
+    "ink-2": "#4A5468",
+    "ink-inverse": "#FFFFFF",
+    "navy": "#14213D",
+    "primary": "#1F4FA3",
+    "primary-ink": "#FFFFFF",
+    "accent": "#C4462E",
+    "accent-ink": "#FFFFFF",
+    "golden": "#FBF1D6",
+    "golden-ink": "#6B4A00",
+    "success": "#2E7D4F",
+    "scrim": "rgba(20,33,61,0.45)",
+    "map-land": "#EEEBE3",
+    "map-water": "#C8D8E4",
+    "map-park": "#DDE5CF",
+    "map-road": "#FFFFFF",
+    "map-label": "#5B6577",
+    "mask": "#EEEBE3"
+  },
+  "categories": {
+    "Mosques & churches": "#1F4FA3",
+    "Palaces & museums": "#6E3A8E",
+    "Viewpoints": "#C4462E",
+    "Bazaars & markets": "#8A5A1E",
+    "Food & drink": "#A35F00",
+    "Neighbourhoods": "#1F6F66",
+    "Parks & waterfront": "#2F7A3A"
+  },
+  "routes": {
+    "ferry": "#1B7F95",
+    "walk": "#C4462E",
+    "boat": "#1F4FA3"
+  },
+  "transit": {
+    "metro": "#C4462E",
+    "tram": "#1F4FA3",
+    "funicular": "#6E3A8E",
+    "ferry": "#1B7F95",
+    "rail": "#4A5468"
+  },
+  "radius": 18,
+  "shadow": 0.14,
+  "basemap": "positron",
+  "pinStyle": "outlined",
+  "maskOpacity": 0.72
+}

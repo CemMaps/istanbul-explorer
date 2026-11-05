@@ -1,0 +1,6 @@
+{
+  "_about": "Curated judgement fixes applied by scripts/04_build_places.py, keyed by Wikidata QID (copied from the data, never typed from memory). Only change what the rules got wrong; say why.",
+  "Q80541": { "_why": "Known in English as the Blue Mosque", "name": "Blue Mosque", "aka": ["Sultan Ahmed Mosque"] },
+  "Q91274": { "_why": "Visited for its balcony view, not as a museum", "category": "Viewpoints" },
+  "Q848397": { "_why": "Visited for the setting and views", "category": "Viewpoints" }
+}

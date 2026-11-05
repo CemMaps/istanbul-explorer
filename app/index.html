@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="">
+  <title>Our Istanbul Tour</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
+</head>
+<body>
+  <div id="app" class="app">
+    <!-- Explore -->
+    <section id="screen-explore" class="screen is-active" aria-label="Explore">
+      <header class="topbar">
+        <button id="countdown" class="countdown" aria-expanded="false" aria-controls="forecast-panel">
+          <span class="countdown-main"><b id="cd-num">–</b> <span id="cd-label">days to go</span></span>
+          <span class="countdown-sub" id="cd-sub">Istanbul · Fri to Mon</span>
+          <span class="countdown-chev" data-icon="chevronDown"></span>
+        </button>
+        <div id="forecast-panel" class="forecast-panel" hidden></div>
+      </header>
+
+      <div class="search-wrap">
+        <label class="search">
+          <span data-icon="search"></span>
+          <input id="search" type="search" placeholder="Try Galata, baklava, palace…" autocomplete="off" aria-label="Search places">
+          <button id="search-clear" class="icon-btn small" hidden aria-label="Clear search"><span data-icon="close"></span></button>
+        </label>
+        <div id="chips" class="chips" role="toolbar" aria-label="Filters"></div>
+      </div>
+
+      <div id="map" class="map" aria-label="Map"></div>
+      <div id="side-badge" class="side-badge" hidden></div>
+      <div class="map-buttons">
+        <button id="btn-near" class="fab" aria-label="Near me"><span data-icon="locate"></span></button>
+        <button id="btn-home" class="fab" aria-label="Centre on our flat"><span data-icon="home"></span></button>
+      </div>
+
+      <section id="sheet" class="sheet" aria-label="Places in view">
+        <button class="sheet-handle" id="sheet-handle" aria-label="Expand list"><span></span></button>
+        <div class="sheet-body" id="sheet-body">
+          <button id="rightnow" class="rightnow" hidden></button>
+          <div class="sheet-head">
+            <h2 id="list-title">Top picks in view</h2>
+            <button id="sheet-toggle" class="link-btn">See all</button>
+          </div>
+          <div id="cards" class="cards"></div>
+          <div id="list" class="list"></div>
+        </div>
+      </section>
+    </section>
+
+    <!-- Saved -->
+    <section id="screen-saved" class="screen" aria-label="Saved">
+      <div class="page">
+        <h1 class="page-title">Saved</h1>
+        <div id="saved-list" class="saved-grid"></div>
+      </div>
+    </section>
+
+    <!-- Plan -->
+    <section id="screen-plan" class="screen" aria-label="Plan">
+      <div class="page">
+        <h1 class="page-title">Our plan</h1>
+        <div id="plan-tabs" class="day-tabs" role="tablist"></div>
+        <div id="plan-body"></div>
+      </div>
+    </section>
+
+    <!-- Place card (overlay) -->
+    <article id="place" class="place" hidden aria-modal="true" role="dialog" aria-labelledby="place-name"></article>
+
+    <nav class="tabbar" aria-label="Main">
+      <button class="tab is-active" data-screen="explore"><span data-icon="compass"></span><span>Explore</span></button>
+      <button class="tab" data-screen="saved"><span data-icon="heart"></span><span>Saved</span></button>
+      <button class="tab" data-screen="plan"><span data-icon="calendar"></span><span>Plan</span></button>
+    </nav>
+
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  </div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

@@ -154,9 +154,15 @@ Prominence on the map: `must-see` shows from low zoom; `worth-it` mid zoom; `bon
 
 ## Phases
 - [x] Phase 0 — setup, questions, CLAUDE.md, scaffold, git init
-- [ ] Phase 1 — research & data (Wikidata → scores → tiers → photos → blurbs → walks & boat trips)
-- [ ] Phase 2 — QA script + `qa/index.html` 🛑 Cem reviews
-- [ ] Phase 3 — theme tokens, Explore + Place card 🛑 Cem tests on phone
+- [~] Phase 1 — research & data. Done: study area (4 km band from the water, data-chosen), OSM mahalles/ferries/stops,
+      Wikidata candidates (670 places, provisional tiers), coverage + bias check, overrides.json.
+      To do: 12-month pageviews (rate-limited, see lessons), area character + lifestyle classification, Overture cross-check,
+      food places, more photos + credits, own-words blurbs, best_time/indoor, walks, boat trips.
+- [ ] Phase 2 — QA script + `qa/index.html` 🛑 Cem reviews (`qa/preview.html` is a quick data map for now)
+- [~] Phase 3 — started early at Cem's request (2026-11-05), on provisional data: theme tokens, config-driven layers,
+      Explore (countdown, forecast panel, search, chips, tiered pins, mask, shore badge, near me/home, sheet, Right now),
+      Place card (gallery, heart, days + undo, Getting there, Close by, quiet Google Maps). Basic Saved + Plan.
+      `scripts/qa_theme.py` enforces no hard-coded colours/fonts. 🛑 Cem tests on phone
 - [ ] Phase 4 — Plan, weather, Right now, Saved & share 🛑 Cem tests on phone
 - [ ] Phase 5 — presets, edit mode, states, a11y, deploy
 
@@ -167,4 +173,12 @@ Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrase
 - **Istanbul winter sunset is ~17:37, not ~16:40** (2026-11-05): Turkey is on permanent UTC+3, so clock sunsets are an hour later than old EET-based figures. Always compute (SunCalc/NOAA); never quote from memory.
 - **Overpass can 502 transiently** (2026-11-05): cache raw responses in `data/raw/`, retry with backoff, fall back to a mirror (overpass.private.coffee).
 - **`python -I` ignores `PYTHONIOENCODING`** (2026-11-05): use `python -I -X utf8` for Turkish text output.
+- **Never type Wikidata QIDs from memory** (2026-11-05): four QIDs I "knew" (SAW, Blue Mosque, Galata Tower, Maiden's Tower) were all wrong.
+  Look them up (wbsearchentities) or copy from the data; `04_build_places.py` now fails on unknown QIDs in overrides.json.
+- **Wikimedia APIs rate-limit anonymous clients hard** (2026-11-05): per-article pageviews REST and WDQS SPARQL return 429 with
+  Retry-After up to 1000 s. Batch (Action API: 50 titles/ids per call), cache everything, honour Retry-After.
+  A User-Agent with a contact (e.g. a GitHub URL) would lift limits — ask Cem before adding one.
+- **Category rules: EXCLUDE words hide real sights** (2026-11-05): "road bridge" hit `road`, districts hit `municipality`.
+  Use a KEEP list and re-run `scripts/analysis_coverage.py` after changing rules.
+- **Heredoc + Python string escapes can write control characters** (2026-11-05): `\b` became a backspace in a regex. Edit files with the Edit tool, not string-replace scripts.
 - **data.ibb.gov.tr timed out from here** (2026-11-05): Istanbul's open-data portal may block non-Turkish IPs; don't depend on it.

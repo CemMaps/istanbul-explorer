@@ -35,18 +35,20 @@ SELECT ?item ?sl ?loc ?img ?commons ?enwiki ?en ?tr (GROUP_CONCAT(DISTINCT ?cl; 
 RULES = [
     ("Mosques & churches", r"mosque|church|cathedral|synagogue|monastery|basilica|chapel|türbe|mausoleum|tekke|dervish|cemevi|shrine"),
     ("Palaces & museums", r"palace|museum|pavilion|kiosk|köşk|art gallery|library|mansion|yalı|konak|ham+am|bathhouse|cistern|madrasa|medrese|caravanserai|han\b|archaeological|"
-                          r"ancient city|monument|column|obelisk|historic building|theatre|opera|concert hall|performing arts"),
-    ("Viewpoints", r"tower|observation|viewpoint|lighthouse|hill"),
+                          r"monument|column|obelisk|historic building|theatre|opera|concert hall|performing arts|hippodrome"),
+    ("Viewpoints", r"tower|observation|viewpoint|lighthouse|hill|bridge"),
     ("Bazaars & markets", r"bazaar|market|arcade|shopping street|çarşı|shopping center"),
     ("Parks & waterfront", r"park|garden|grove|forest|square|promenade|beach|pier|quay|waterfront|cemetery|fountain"),
-    ("Fortifications", r"fortress|fortification|castle|city wall|wall|gate|aqueduct|bridge"),
-    ("Neighbourhoods", r"neighbo|quarter|mahalle|district|human settlement|village|street|avenue"),
+    ("Fortifications", r"fortress|fortification|castle|city wall|wall|gate|aqueduct"),
+    ("Neighbourhoods", r"neighbo|quarter|mahalle|district|human settlement|village|\btown\b|street|avenue"),
     ("Food & drink", r"restaurant|café|cafe|coffeehouse|patisserie|bakery|meyhane"),
 ]
 # Classes that are never visitor attractions here.
 EXCLUDE = r"school|university|hospital|stadium|metro station|railway station|tram stop|bus|airport|hotel|company|" \
           r"office|consulate|embassy|government|ministry|military|prison|television|radio|sports club|" \
-          r"electoral|administrative|municipality|ship|shipwreck|high-rise|skyscraper|residential building|tunnel|road|highway"
+          r"electoral|administrative|municipality|ship|shipwreck|high-rise|skyscraper|residential building|tunnel|road|highway|\bria\b|polis|ancient city"
+# Keep even if an EXCLUDE word matches (e.g. "road bridge", "municipality … district of Turkey").
+KEEP = r"bridge|district of turkey|municipality of turkey|hippodrome"
 
 
 def classify(classes):
@@ -84,7 +86,7 @@ def main():
     for it in items.values():
         joined = " | ".join(it["classes"]).lower()
         cat = classify(it["classes"])
-        if re.search(EXCLUDE, joined) and cat not in ("Mosques & churches", "Palaces & museums", "Viewpoints"):
+        if re.search(EXCLUDE, joined) and not re.search(KEEP, joined) and cat not in ("Mosques & churches", "Palaces & museums", "Viewpoints"):
             excluded.update(it["classes"])
             continue
         if not cat:

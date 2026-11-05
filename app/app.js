@@ -391,7 +391,7 @@ async function renderThemePicker() {
   const presets = await Promise.all(index.presets.map((id) => fetch(`themes/${id}.json`).then((r) => r.json())));
   const cur = THEME.id;
   box.innerHTML = presets.map((p) => `<button role="radio" aria-checked="${p.id === cur}" data-preset="${p.id}" class="tp"
-      style="--tp-a:${p.colors.navy};--tp-b:${p.colors.primary};--tp-c:${p.colors.accent};--tp-d:${p.colors["map-land"]}">
+      style="--tp-a:${p.colors.navy};--tp-b:${p.swatch || p.colors.primary};--tp-c:${p.colors.accent};--tp-d:${p.colors["map-land"]}">
       <span class="tp-sw"><i></i><i></i><i></i></span><span class="tp-name">${esc(p.label)}</span></button>`).join("");
   box.dataset.ready = "1";
   box.addEventListener("click", (e) => {

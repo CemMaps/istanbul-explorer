@@ -8,9 +8,9 @@
     "favicon": null
   },
   "fonts": {
-    "heading": "DM Serif Display",
-    "body": "DM Sans",
-    "googleFonts": "family=DM+Serif+Display&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700"
+    "heading": "Figtree",
+    "body": "Figtree",
+    "googleFonts": "family=Figtree:wght@400..800"
   },
   "colors": {
     "ground": "#F6EDEE",
@@ -85,5 +85,6 @@
     "#2E9E5B",
     "#9B3FB5",
     "#E0A100"
-  ]
+  ],
+  "swatch": "#8E2C55"
 }

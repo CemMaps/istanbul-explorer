@@ -8,9 +8,9 @@
     "favicon": null
   },
   "fonts": {
-    "heading": "Fraunces",
-    "body": "Work Sans",
-    "googleFonts": "family=Fraunces:opsz,wght@9..144,600..800&family=Work+Sans:wght@400;500;600;700"
+    "heading": "Figtree",
+    "body": "Figtree",
+    "googleFonts": "family=Figtree:wght@400..800"
   },
   "colors": {
     "ground": "#F3E9DA",
@@ -85,5 +85,6 @@
     "#2E9E5B",
     "#9B3FB5",
     "#E0A100"
-  ]
+  ],
+  "swatch": "#9C4A1A"
 }

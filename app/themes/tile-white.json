@@ -8,9 +8,9 @@
     "favicon": null
   },
   "fonts": {
-    "heading": "Geist",
-    "body": "Geist",
-    "googleFonts": "family=Geist:wght@400..800"
+    "heading": "Figtree",
+    "body": "Figtree",
+    "googleFonts": "family=Figtree:wght@400..800"
   },
   "colors": {
     "ground": "#F7F7F5",
@@ -85,5 +85,6 @@
     "#2E9E5B",
     "#9B3FB5",
     "#E0A100"
-  ]
+  ],
+  "swatch": "#F4F2EE"
 }

@@ -32,7 +32,7 @@
     "bonus": { "minzoom": 13.6, "size": 0.62, "label": "Bonus" }
   },
   "categories": [
-    { "id": "Mosques & churches", "short": "Mosque", "icon": "dome" },
+    { "id": "Mosques & churches", "short": "Mosque", "icon": "dome", "kinds": { "mosque": "Mosque", "church": "Church", "synagogue": "Synagogue", "monastery": "Monastery", "tomb": "Tomb" } },
     { "id": "Palaces & museums", "short": "Museum", "icon": "columns" },
     { "id": "Viewpoints", "short": "Viewpoint", "icon": "eye" },
     { "id": "Bazaars & markets", "short": "Bazaar", "icon": "bag" },
@@ -44,7 +44,8 @@
     { "id": "all", "label": "All" },
     { "id": "iconic", "label": "Iconic", "match": { "tier": ["must-see"] } },
     { "id": "views", "label": "Viewpoints", "match": { "category": ["Viewpoints"] } },
-    { "id": "mosques", "label": "Mosques", "match": { "category": ["Mosques & churches"] } },
+    { "id": "mosques", "label": "Mosques", "match": { "category": ["Mosques & churches"], "kind": ["mosque", "tomb"] } },
+    { "id": "churches", "label": "Churches & synagogues", "match": { "category": ["Mosques & churches"], "kind": ["church", "synagogue", "monastery"] } },
     { "id": "museums", "label": "Palaces & museums", "match": { "category": ["Palaces & museums"] } },
     { "id": "bazaars", "label": "Bazaars", "match": { "category": ["Bazaars & markets"] } },
     { "id": "food", "label": "Food", "match": { "category": ["Food & drink"] } },

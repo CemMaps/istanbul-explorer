@@ -8,8 +8,10 @@
   <title>Istanbul Explorer</title>
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icon.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="Istanbul">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -27,7 +29,7 @@
       <div class="search-wrap">
         <div class="search">
           <span data-icon="search"></span>
-          <input id="search" type="search" placeholder="Search anything" autocomplete="off" enterkeyhint="search" aria-label="Search places, areas, food">
+          <input id="search" type="search" placeholder="Search places, areas, history…" autocomplete="off" enterkeyhint="search" aria-label="Search places, areas, food">
           <button id="search-clear" class="icon-btn small" hidden aria-label="Clear search"><span data-icon="close"></span></button>
         </div>
         <div id="chips" class="chips" role="toolbar" aria-label="Filters"></div>
@@ -96,9 +98,10 @@
         <button id="open-splash" class="more-row"><span data-icon="sun"></span><span><b>Countdown &amp; trip forecast</b><small id="splash-sub">Days to go, weather and sunsets</small></span><span data-icon="chevronRight"></span></button>
         <h2 class="settings-title">App theme</h2>
         <div id="theme-picker" class="theme-picker" role="radiogroup" aria-label="App theme"></div>
-        <button id="open-credits" class="more-row"><span data-icon="label"></span><span><b>Photo credits &amp; data sources</b><small>Wikimedia Commons, OpenStreetMap, CARTO</small></span><span data-icon="chevronRight"></span></button>
         <div class="more-row static"><span data-icon="offline"></span><span><b>Offline</b><small>Keep the map and photos on this phone</small></span></div>
         <div id="offline-box" class="offline-box"></div>
+        <div id="install-box"></div>
+        <button id="open-credits" class="credits-tiny">Photos: Wikimedia Commons · Text: Wikipedia · Map © OpenStreetMap, CARTO</button>
       </div>
     </section>
 

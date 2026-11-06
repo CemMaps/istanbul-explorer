@@ -4,7 +4,7 @@ import { createMap, createMiniMap } from "./map.js";
 import { store } from "./store.js";
 import { tripStatus, sunTimes, forecast, fmtTime, istanbulToday, istMinutes } from "./sky.js";
 import { order, legMode, legsGeometry } from "./routes.js";
-import { renderSplash, badgeText } from "./splash.js";
+import { renderSplash, updateSplashForecast, badgeText } from "./splash.js";
 import { indexCodes, importFromHash, shareMyPicks, people, mergeIntoMine, removePerson, fmtAsOf } from "./share.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -28,6 +28,8 @@ let DATA = null;
 let CFG, THEME, PLACES, BYID, STOPS, FERRIES, AREAS, MAP, FC = null, MOCK = false;
 
 const catCfg = (id) => CFG.categories.find((c) => c.id === id) || { short: id, icon: "pin" };
+// Short type label: "Church", "Synagogue"… for places of worship (data: `kind`), else the category's short name.
+const typeLabel = (p) => (p.kind && catCfg(p.category).kinds?.[p.kind]) || catCfg(p.category).short;
 const tierRank = { "must-see": 0, "worth-it": 1, bonus: 2 };
 // Wikimedia serves thumbnails at standard widths only; other sizes are slow or refused. Snap up to the next one.
 const THUMB_W = [120, 250, 330, 500, 960, 1280];
@@ -46,12 +48,15 @@ function matchesFilter(p) {
   const chip = CFG.chips.find((c) => c.id === S.chip);
   if (chip?.match) for (const [k, vals] of Object.entries(chip.match)) if (!vals.includes(p[k])) return false;
   if (S.query) {
-    const hay = norm([p.name, p.name_tr, ...(p.aka || []), p.area, p.mahalle, p.category, catCfg(p.category).short, p.blurb, ...(p.dishes || [])].join(" "));
-    if (!norm(S.query).split(/\s+/).every((w) => hay.includes(w))) return false;
+    // Search covers names (English + Turkish), district + neighbourhood, type (mosque, church, museum…)
+    // and the short description, so "Byzantine", "Sinan" or "Ottoman palace" work too.
+    p._hay ||= norm([p.name, p.name_tr, ...(p.aka || []), p.area, p.mahalle, p.kind ? "" : p.category, typeLabel(p), p.summary || p.blurb, ...(p.dishes || [])].join(" "));
+    if (!norm(S.query).split(/\s+/).every((w) => p._hay.includes(w))) return false;
   }
   return true;
 }
 function refreshPlaces({ fit = false } = {}) {
+  if (!MAP) return; // typed before the map finished loading; boot applies the filter
   for (const f of PLACES.features) f.properties.dim = !matchesFilter(f.properties);
   MAP.showAllTiers(filterActive());
   MAP.setPlaces(PLACES);
@@ -77,7 +82,7 @@ function thumb(p, { pill = true, heart = true, badge = "" } = {}) {
   return `<div class="thumb" style="--cat: var(${catVar(p.category)})">
     ${ph ? `<img loading="lazy" alt="" src="${photoUrl(ph.file, THUMB)}" onerror="this.remove()">` : ""}
     ${icon(catCfg(p.category).icon, 30)}
-    ${pill && !badge ? `<span class="pill">${esc(catCfg(p.category).short)}</span>` : ""}
+    ${pill && !badge ? `<span class="pill">${esc(typeLabel(p))}</span>` : ""}
     ${badge ? `<span class="badge-both">${esc(badge)}</span>` : ""}
     ${heart ? `<span class="heart ${store.isHearted(p.id) ? "is-on" : ""}" data-heart="${esc(p.id)}" role="button" tabindex="0" aria-label="Save ${esc(p.name)}" aria-pressed="${store.isHearted(p.id)}">${icon("heart", 18)}</span>` : ""}
   </div>`;
@@ -139,7 +144,7 @@ function renderList() {
     ? items.slice(0, 12).map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p)}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${sub(x)}</div></button>`).join("")
     : `<p class="empty">Nothing here with these filters. Zoom out or clear the search.</p>`;
   $("#list").innerHTML = items.slice(0, 150).map((x) => `<button class="row" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false })}
-      <div class="row-txt"><div class="row-name">${esc(x.p.name)}</div><div class="row-sub">${esc(catCfg(x.p.category).short)} · ${sub(x)}</div></div></button>`).join("")
+      <div class="row-txt"><div class="row-name">${esc(x.p.name)}</div><div class="row-sub">${esc(typeLabel(x.p))} · ${sub(x)}</div></div></button>`).join("")
     || `<p class="empty">Nothing in view.</p>`;
   $("#sheet-toggle").textContent = S.sheet === "open" ? "Show map" : `See all ${items.length}`;
   $("#sheet-bar-txt").textContent = `${items.length} ${items.length === 1 ? "place" : "places"} in view`;
@@ -147,7 +152,7 @@ function renderList() {
 
 // ---------- bottom sheet: closed / peek / open ----------
 function sheetHeights() {
-  const appH = $("#app").clientHeight - parseInt(getComputedStyle(document.documentElement).getPropertyValue("--tabbar-h"));
+  const appH = $("#app").clientHeight - $(".tabbar").offsetHeight;
   return { closed: 70, peek: Math.min(310, Math.round(appH * 0.42)), open: appH - 72 };
 }
 function setSheet(state) {
@@ -157,7 +162,7 @@ function setSheet(state) {
   sheet.dataset.state = state;
   sheet.style.setProperty("--sheet-h", `${h[state]}px`);
   document.documentElement.style.setProperty("--sheet-peek", `${state === "open" ? h.peek : h[state]}px`);
-  MAP.map.setPadding({ top: 120, bottom: state === "open" ? h.peek : h[state], left: 0, right: 0 });
+  MAP.map.setPadding({ top: 110, bottom: state === "open" ? h.peek : h[state], left: 0, right: 0 });
   $("#sheet-handle").setAttribute("aria-label", state === "closed" ? "Show the list" : "Drag or tap to resize the list");
   renderList();
 }
@@ -239,12 +244,6 @@ function vibeWords(primary, secondary, lifestyle) {
   const s = secondary && vibeCls(secondary);
   return `${c.short}${s ? `, with ${s.short.toLowerCase()}` : ""}${vibeLife(lifestyle) ? ` · ${vibeLife(lifestyle).label}` : ""}`;
 }
-function vibeTag(p) {
-  const ch = p.character;
-  if (!ch?.primary) return "";
-  return `<span class="tag vibe" style="--vibe: var(--vibe-${ch.primary})">${esc(vibeWords(ch.primary, ch.secondary, p.lifestyle))}</span>`;
-}
-const BEST = { morning: "in the morning", midday: "around midday", afternoon: "in the afternoon", "golden-hour": "at golden hour", evening: "in the evening", any: "any time" };
 
 function openPlace(id) {
   const f = BYID[id];
@@ -258,43 +257,57 @@ function openPlace(id) {
   const el = $("#place");
   el.style.setProperty("--cat", `var(${catVar(p.category)})`);
   const near = closeBy(id, coord);
-  const blurb = p.blurb ? p.blurb[0].toUpperCase() + p.blurb.slice(1) : "";
+  // Short description: Wikipedia intro (≤ ~50 words, scripts/08_finish_places.py), else the Wikidata line.
+  const about = p.summary || (p.blurb ? p.blurb[0].toUpperCase() + p.blurb.slice(1) : "");
+  const real = photos.filter(Boolean);
   el.innerHTML = `
     <div class="gallery">
-      <div class="gallery-track">${photos.map((ph, i) => `<div class="gallery-slide">${ph ? `<img alt="${i ? "" : esc(p.name)}" ${i > 1 ? 'loading="lazy"' : ""} src="${photoUrl(ph.file, 900)}" onerror="this.remove()">` : icon(catCfg(p.category).icon, 64)}</div>`).join("")}</div>
+      <div class="gallery-track">${photos.map((ph, i) => `<div class="gallery-slide">${ph ? `<img alt="${i ? "" : esc(p.name)}" ${i > 1 ? 'loading="lazy"' : ""} draggable="false" data-zoom="${i}" src="${photoUrl(ph.file, 900)}" onerror="this.remove()">` : icon(catCfg(p.category).icon, 64)}</div>`).join("")}</div>
       <button class="icon-btn g-back" data-close aria-label="Back">${icon("back")}</button>
       <button class="icon-btn g-share" data-share-place aria-label="Share this place">${icon("share")}</button>
       <button class="icon-btn g-heart ${store.isHearted(id) ? "is-on" : ""}" data-heart="${esc(id)}" aria-label="Save" aria-pressed="${store.isHearted(id)}">${icon("heart")}</button>
-      ${photos.length > 1 ? `<span class="g-count">1 / ${photos.length} · swipe</span>` : ""}
+      ${real.length > 1 ? `<span class="g-count">1 / ${real.length}</span>` : ""}
     </div>
     <div class="place-body">
-      <div class="tags">
-        <span class="tag cat">${esc(catCfg(p.category).short)}</span>
-        ${p.tier !== "bonus" ? `<span class="tag tier">${esc(CFG.tiers[p.tier].label)}</span>` : ""}
-        <span class="tag">${esc(p.area)}</span>
-        ${vibeTag(p)}
-      </div>
       <h1 id="place-name">${esc(p.name)}</h1>
       ${p.name_tr && p.name_tr !== p.name ? `<div class="name-tr" lang="tr">${esc(p.name_tr)}</div>` : ""}
-      ${blurb ? `<p class="blurb ${p.blurb_status === "placeholder-wikidata" ? "is-placeholder" : ""}">${esc(blurb)}</p>` : ""}
+      <a class="gmaps" href="https://www.google.com/maps/search/?api=1&query=${coord[1]},${coord[0]}" target="_blank" rel="noopener">${icon("pin", 18)} Open in Google Maps</a>
+      ${about ? `<p class="blurb">${esc(about)}</p>` : ""}
       ${p.tip ? `<p class="blurb">${esc(p.tip)}</p>` : ""}
-      ${p.best_time ? `<div class="besttime">${icon(p.best_time === "golden-hour" ? "sunset" : p.best_time === "evening" ? "sparkle" : "sun", 24)}<span><b>Best ${BEST[p.best_time]}</b>${p.indoor ? "Indoors, so fine in the rain" : "Outdoors, so skip it in heavy rain"}</span></div>` : ""}
       <h2 class="section-title">Add to a day</h2>
       <div class="days" id="days">${dayButtons(id)}</div>
       <h2 class="section-title">Getting there</h2>
       <div class="getting">${gettingThere(coord)}</div>
       ${near.length ? `<h2 class="section-title">Close by</h2><div class="nearby">${near.map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false })}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${Math.max(1, Math.round(x.d / 80))} min walk</div></button>`).join("")}</div>` : ""}
-      <a class="gmaps" href="https://www.google.com/maps/search/?api=1&query=${coord[1]},${coord[0]}" target="_blank" rel="noopener">${icon("pin", 20)} Open in Google Maps</a>
     </div>`;
   el.hidden = false;
   el.scrollTop = 0;
   const track = $(".gallery-track", el), count = $(".g-count", el);
-  track?.addEventListener("scroll", () => { if (count) count.textContent = `${Math.round(track.scrollLeft / track.clientWidth) + 1} / ${photos.length} · swipe`; }, { passive: true });
+  track?.addEventListener("scroll", () => { if (count) count.textContent = `${Math.round(track.scrollLeft / track.clientWidth) + 1} / ${real.length}`; }, { passive: true });
   history.replaceState(null, "", `${location.pathname}${location.search}#place=${encodeURIComponent(id)}`);
-  $(".g-back", el).focus({ preventScroll: true });
+  el.tabIndex = -1;
+  el.focus({ preventScroll: true });
+}
+
+// Full-screen photo viewer: tap a photo on the place card; swipe sideways, tap ✕ (or the photo) to close.
+function openViewer(photos, start) {
+  const v = document.createElement("div");
+  v.className = "viewer";
+  v.setAttribute("role", "dialog");
+  v.setAttribute("aria-label", "Photos");
+  v.innerHTML = `<div class="viewer-track">${photos.map((ph) => `<div class="viewer-slide"><img draggable="false" alt="" src="${photoUrl(ph.file, 1280)}"></div>`).join("")}</div>
+    <button class="icon-btn viewer-x" aria-label="Close photos">${icon("close")}</button>
+    ${photos.length > 1 ? `<span class="viewer-count">${start + 1} / ${photos.length}</span>` : ""}`;
+  $("#app").appendChild(v);
+  const track = $(".viewer-track", v), count = $(".viewer-count", v);
+  track.scrollLeft = start * track.clientWidth;
+  track.addEventListener("scroll", () => { if (count) count.textContent = `${Math.round(track.scrollLeft / track.clientWidth) + 1} / ${photos.length}`; }, { passive: true });
+  v.addEventListener("click", () => v.remove());
 }
 $("#place").addEventListener("click", (e) => {
   if (e.target.closest("[data-close]")) return closePlace();
+  const z = e.target.closest("[data-zoom]");
+  if (z) return openViewer(BYID[S.selected].properties.photos, +z.dataset.zoom);
   if (e.target.closest("[data-share-place]")) return sharePlace(S.selected);
   const b = e.target.closest("[data-day]");
   if (!b) return;
@@ -327,6 +340,7 @@ function closePlace() {
 }
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
+  if ($(".viewer")) return $(".viewer").remove();
   if (!$("#dialog").hidden) return closeDialog();
   if (!$("#place").hidden) closePlace();
 });
@@ -363,7 +377,7 @@ function showCredits() {
   const rows = PLACES.features.filter((f) => f.properties.photos?.length)
     .flatMap((f) => f.properties.photos.map((ph) => ({ place: f.properties.name, ...ph })));
   openDialog(`<h2>Credits</h2>
-    <p>Photos from <b>Wikimedia Commons</b>, used under their licences. Place data from <b>Wikidata</b> (CC0).
+    <p>Photos from <b>Wikimedia Commons</b>, used under their licences. Place data from <b>Wikidata</b> (CC0); short descriptions from <b>Wikipedia</b> (CC BY-SA 4.0).
     Map data © <b>OpenStreetMap</b> contributors (ODbL), basemap © <b>CARTO</b>. Weather by <b>Open-Meteo</b> (CC BY 4.0).</p>
     <button class="btn-secondary" data-close-dialog>Close</button>
     <ul class="credits">${rows.map((r) => `<li><b>${esc(r.place)}</b>: “${esc(r.file)}” by ${esc(r.author || "unknown")}, ${esc(r.licence || "see Commons")}</li>`).join("")}</ul>`);
@@ -378,7 +392,7 @@ function renderBadge() {
 async function showSplash(after) {
   const el = $("#splash");
   renderSplash(el, { cfg: CFG, theme: THEME, fc: FC, people: CFG.trip.people, onGo: after });
-  if (!FC) { await getForecast(); if (!el.hidden && !el.classList.contains("is-leaving")) renderSplash(el, { cfg: CFG, theme: THEME, fc: FC, people: CFG.trip.people, onGo: after }); }
+  if (!FC) { await getForecast(); if (!el.hidden && !el.classList.contains("is-leaving")) updateSplashForecast(el, { cfg: CFG, fc: FC }); }
 }
 $("#open-splash").addEventListener("click", () => showSplash());
 
@@ -459,6 +473,21 @@ async function saveOffline() {
   toast(failed > total * 0.1 ? `Saved, but ${failed} items failed. Try again on Wi-Fi.` : "Saved for offline");
 }
 
+// ---------- Install (Add to Home Screen) ----------
+// Android/Chrome offers a real install prompt; iPhone Safari needs Share → Add to Home Screen.
+let installEvt = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; if ($("#screen-more").classList.contains("is-active")) renderInstall(); });
+function renderInstall() {
+  const box = $("#install-box");
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone;
+  const ios = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  if (standalone || (!installEvt && !ios)) { box.innerHTML = ""; return; }
+  box.innerHTML = `<div class="more-row static"><span>${icon("download")}</span><span><b>Install the app</b>
+    <small>${installEvt ? "Opens full screen from your home screen, like a normal app" : "In Safari: tap Share, then “Add to Home Screen”"}</small></span></div>
+    ${installEvt ? `<div class="offline-box"><button class="btn-secondary" id="install-btn">Install</button></div>` : ""}`;
+  $("#install-btn")?.addEventListener("click", async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; renderInstall(); });
+}
+
 // ---------- buttons ----------
 $("#btn-home").addEventListener("click", () => MAP.map.flyTo({ center: CFG.map.home, zoom: 15, duration: 800 }));
 $("#btn-near").addEventListener("click", () => {
@@ -482,20 +511,21 @@ function renderVibeLegend() {
   const life = S.vibe === "lifestyle";
   const rows = life ? CFG.vibe.lifestyles.map((l) => [l.id, l.label, `--life-${l.id}`]) : CFG.vibe.classes.map((c) => [c.id, c.short, `--vibe-${c.id}`]);
   const one = S.vibeOnly[0];
+  const keep = $(".vp-chips", el)?.scrollLeft || 0; // tapping a colour must not jump the row back to the start
   el.innerHTML = `<div class="vp-head">
       <div class="vl-seg" role="tablist" aria-label="Colour the map by">
         <button role="tab" data-vmode="character" aria-selected="${!life}">Character</button>
         <button role="tab" data-vmode="lifestyle" aria-selected="${life}">Lifestyle</button></div>
       <button class="icon-btn small" data-vclose aria-label="Close the vibe map">${icon("close", 18)}</button></div>
     <div class="vp-chips">${rows.map(([id, label, v]) => `<button data-vonly="${id}" aria-pressed="${one === id}" class="${one && one !== id ? "is-off" : ""}">
-      <i style="background: var(${v})"></i>${esc(label)}</button>`).join("")}</div>
-    <p class="vp-tip">${one ? `Showing only ${esc(rows.find((r) => r[0] === one)[1].toLowerCase())} areas. Tap it again to see all.` : "Tap a colour to show only those areas. Tap an area on the map to see what it's like."}</p>`;
+      <i style="background: var(${v})"></i>${esc(label)}</button>`).join("")}</div>`;
   el.hidden = false;
+  $(".vp-chips", el).scrollLeft = keep;
 }
 $("#vibe-legend").addEventListener("click", (e) => {
   if (e.target.closest("[data-vclose]")) return setVibe(null);
   const m = e.target.closest("[data-vmode]");
-  if (m) { S.vibeOnly = []; return setVibe(m.dataset.vmode); }
+  if (m) { S.vibeOnly = []; setVibe(m.dataset.vmode); $(".vp-chips").scrollLeft = 0; return; }
   const o = e.target.closest("[data-vonly]");
   if (!o) return;
   S.vibeOnly = S.vibeOnly[0] === o.dataset.vonly ? [] : [o.dataset.vonly];
@@ -521,13 +551,14 @@ function setVibe(mode) {
   renderVibeLegend();
   $("#sheet").hidden = !!mode;
   document.documentElement.classList.toggle("vibe-on", !!mode);
-  if (mode && !wasOn) { const h = $("#vibe-legend").offsetHeight; document.documentElement.style.setProperty("--sheet-peek", `${h}px`); MAP.map.setPadding({ top: 120, bottom: h, left: 0, right: 0 }); }
+  // The legend floats over the map: the map itself doesn't move (only the small credit line steps up).
+  if (mode && !wasOn) document.documentElement.style.setProperty("--sheet-peek", `${$("#vibe-legend").offsetHeight}px`);
   if (!mode && wasOn) setSheet(S.sheet === "open" ? "peek" : S.sheet);
 }
 $("#btn-vibe").addEventListener("click", () => setVibe(S.vibe ? null : "character"));
 
 // ---------- What's here: tap the map, get the area's vibe and the best things within a short walk ----------
-const HERE_M = 900;
+const HERE_M = 500; // ~6 min walk (was 900 m: too big a circle)
 function setHereMode(on) {
   S.here = on;
   $("#btn-here").classList.toggle("is-on", on);
@@ -553,7 +584,7 @@ function onMapClick(e) {
   // Keep the spot and its circle visible above the results panel.
   const mapH = MAP.map.getContainer().clientHeight;
   const panel = $("#app").clientHeight * 0.56 - (mapH < $("#app").clientHeight ? $("#app").clientHeight - mapH : 0);
-  MAP.map.easeTo({ center: c, zoom: 13.4, padding: { top: 110, bottom: Math.max(0, panel), left: 0, right: 0 }, duration: 500 });
+  MAP.map.easeTo({ center: c, zoom: 14.2, padding: { top: 110, bottom: Math.max(0, panel), left: 0, right: 0 }, duration: 500 });
   const near = PLACES.features
     .map((f) => ({ p: f.properties, d: distM(c, f.geometry.coordinates) }))
     .filter((x) => x.d <= HERE_M)
@@ -575,7 +606,7 @@ function onMapClick(e) {
       <h3 class="section-title">${near.length ? `Best within a ${walk(HERE_M).replace(" walk", "")} walk` : "Nothing we've mapped close by"}</h3>
       <ol class="here-list">${near.slice(0, 8).map((x, i) => `<li><button class="row" data-here-open="${esc(x.p.id)}">
           <span class="rank">${i + 1}</span>${thumb(x.p, { pill: false, heart: false })}
-          <span class="row-txt"><span class="row-name">${esc(x.p.name)}</span><span class="row-sub">${esc(catCfg(x.p.category).short)}${x.p.tier === "must-see" ? " · Must-see" : ""} · ${walk(x.d)}</span></span></button></li>`).join("")}</ol>
+          <span class="row-txt"><span class="row-name">${esc(x.p.name)}</span><span class="row-sub">${esc(typeLabel(x.p))}${x.p.tier === "must-see" ? " · Must-see" : ""} · ${walk(x.d)}</span></span></button></li>`).join("")}</ol>
       ${near.length > 8 ? `<p class="hint left">${near.length - 8} more on the map inside the circle.</p>` : ""}
     </div>`);
   $("#dialog").classList.add("is-sheet");
@@ -593,7 +624,7 @@ function showScreen(name) {
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("is-active", s.id === `screen-${name}`));
   if (!$("#place").hidden) closePlace();
   if (name === "saved") renderSaved();
-  if (name === "more") { renderThemePicker(); renderOffline(); renderBadge(); }
+  if (name === "more") { renderThemePicker(); renderOffline(); renderInstall(); renderBadge(); }
   if (name === "plan") renderPlan();
   if (name === "explore") MAP.map.resize();
 }
@@ -622,9 +653,8 @@ function renderSaved() {
   if (S.savedTab === "mine") {
     ids = me.hearts.filter((id) => BYID[id]);
     top = `<section class="share-card">
-        <div class="share-txt"><h2>Share your Istanbul list</h2>
-        <p>Send it to the group. The link opens your picks right here in the app, on the same map, with photos and routes, ready to explore and save from.</p></div>
-        <button class="btn-share" id="share-btn">${icon("share", 18)} Share my list${ids.length ? ` · ${ids.length}` : ""}</button>
+        <h2>Share your saved places</h2>
+        <button class="btn-share" id="share-btn">${icon("share", 18)} Share${ids.length ? ` · ${ids.length}` : ""}</button>
       </section>`;
     const others = Object.entries(all);
     badgeFor = (id) => { const w = others.filter(([, p]) => p.hearts.includes(id)).map(([n]) => n); return w.length ? `${w.join(" & ")} saved this too` : ""; };
@@ -877,6 +907,8 @@ async function switchTheme() {
     f.properties.dim = false;
   }
   PLACES = places; STOPS = stops; FERRIES = ferries; AREAS = areas;
+  // A chip only shows when the data has something for it (e.g. Food stays hidden until food places are added).
+  CFG.chips = CFG.chips.filter((c) => !c.match || places.features.some((f) => Object.entries(c.match).every(([k, v]) => v.includes(f.properties[k]))));
   BYID = Object.fromEntries(places.features.map((f) => [f.properties.id, f]));
   indexCodes(Object.keys(BYID));
   renderBadge();

@@ -58,7 +58,7 @@ Ignore all other skills, plugins and MCP tools. Built-in browser pane OK for pho
 | Getting there | Short per-place line: nearest metro/tram/funicular/ferry stop, walk distance, line name; "Taxi is easiest" when nothing is close. |
 | Filters | Non-matching places **disappear** (changed 2026-11-05, Cem: "hide, don't dim"). "All places" chip becomes a "✕ Show all" reset when a filter/search is on. Chip label "Viewpoints". |
 | Routes (replaces Plan, 2026-11-05) | Tab "Routes". A route = places added to a day; app orders them nearest-first from the start (our flat by default, "Start:" picker) with nearest-neighbour + 2-opt. No times, weather, fixed arrival/airport stops or "As added". Between stops only the mode: "Walk · N min", Tram/Metro/Ferry, or Taxi (`routes.js` `legMode`). Up to 3 alternative routes per day, each its own colour (5 route colours in theme). "On map" switch shows up to 5 routes on Explore with a legend. Lines follow streets via the keyless FOSSGIS OSRM foot router (`routing.openstreetmap.de/routed-foot`, cached in localStorage) and ferry lines for ferry legs. Mini map on the Routes screen. Tray: "Saved, not in a route yet". |
-| What's here | Button under My location: tap it, tap the map → 900 m circle, the neighbourhood (nearest mahalle), its vibe words + feel, and the best places inside ranked by tier, score, distance. |
+| What's here | Button under My location: tap it, tap the map → 500 m circle (was 900 m; cut 2026-11-06), the neighbourhood (nearest mahalle), its vibe words + feel, and the best places inside ranked by tier, score, distance. |
 | Name | **Istanbul Explorer** (renamed 2026-11-05; theme `app.name`, manifest, title). |
 | Splash photo | "Golden Horn Metro Bridge at sunset.jpg" (Commons, credited via places.geojson) with a slow drone-like drift; Explore fades into the map. |
 | Vibe button | Colourful Iznik-ring button with a tulip icon (top right, under What's here). Legend floats under it: Character / Lifestyle switch, tap rows to show only those areas. With the vibe map on, tapping an area (not a pin) shows its vibe in a toast. |
@@ -71,9 +71,12 @@ Ignore all other skills, plugins and MCP tools. Built-in browser pane OK for pho
 | Offline | Service worker (https or localhost). "Save for offline" on the Saved screen caches basemap tiles z10–14 for the area + one thumbnail per place + first big photo of top places (~60 MB). Add to Home Screen via `manifest.webmanifest`. |
 | Edit mode | `?edit=1` (hidden, not secure). |
 | Mock forecast | Opt-in toggle (edit mode or `?mockweather=1`), always labelled "Sample forecast". Never shown by default. |
-| Photo credits | No credit on each photo. Author + licence kept in data, shown on one small "Photo credits" screen. |
+| Photo credits | No credit on each photo. Author + licence kept in data. Credits = one tiny line at the bottom of More (tap → full list); no menu row (2026-11-06). |
 | Sharing | Snapshot links (no live sync). |
 | Hosting | Later. Likely GitHub Pages (static). Must be https for geolocation. |
+| Place card (2026-11-06) | No tag row (no category/tier/area/vibe/lifestyle tags), no "Best in the morning" box. Under the title: "Open in Google Maps" pill, then `summary` (Wikipedia intro). Tap a photo → full-screen viewer. |
+| Places of worship (2026-11-06) | One category, but each place has `kind` (mosque/church/synagogue/monastery/tomb) for labels; chips "Mosques" and "Churches & synagogues". A chip with no matching data is hidden (Food, until food places exist). |
+| PWA (2026-11-06) | Installable: PNG icons in `app/icons/` (rendered from the SVGs with headless Edge), manifest with maskable icon, apple-touch-icon; More shows "Install the app" (Android prompt / iPhone Share → Add to Home Screen). |
 | Mockup tweaks (agreed) | Google Maps button = quiet secondary with official pin icon; plan step numbers in cobalt (not red); filter chips show an active count. |
 
 ## Area character ("vibe") — v2, researched (2026-11-05)
@@ -145,7 +148,7 @@ Line layers: Walks · Boat trips · Ferry lines. Area layer: Vibe map. Fixed: th
 ## Data schema
 `data/places.geojson` properties:
 `id` (slug) · `name` · `name_tr` · `category` · `character` {primary, secondary} (defaults from area) · `tier` · `score` (1–5) + `score_basis` ·
-`area` · `shore` (`europe`/`asia`) · `blurb` (≤25 words, own words) · `tip` (optional) · `indoor` (bool) ·
+`area` · `shore` (`europe`/`asia`) · `blurb` (≤25 words, own words; currently the Wikidata description) · `summary` (≤ ~50 words, first sentences of the English Wikipedia intro, CC BY-SA; `summary_source`) · `kind` (places of worship) · `tip` (optional) · `indoor` (bool) ·
 `best_time` (`morning`/`midday`/`afternoon`/`golden-hour`/`evening`/`any`) · `dishes` (food only) · `veggie_friendly` (food only) ·
 `wikidata` · `wikipedia` · `photos` [{file, author, licence}] · `source` · `qa`.
 
@@ -170,7 +173,9 @@ Prominence on the map: `must-see` shows from low zoom; `worth-it` mid zoom; `bon
       Wikidata candidates (670 places, provisional tiers), coverage + bias check, overrides.json.
       Done 2026-11-05: photos (1,335 with credits, `05_photos.py`), Overture 2026-10-21.0 places (`06_overture.py`, 172k POIs),
       area character + lifestyle for 305 mahalles → 123 areas (`07_areas.py`, rules + reasoned overrides, evidence in
-      `data/mahalle_character.csv` for Cem to review). Run order 04 → 05 → 07 (restore `data/raw/places_before_07.geojson` before re-running 07).
+      `data/mahalle_character.csv` for Cem to review). Run order 04 → 05 → 07 → 08 (restore `data/raw/places_before_07.geojson` before re-running 07).
+      2026-11-06: `08_finish_places.py` drops 22 non-places (2024 church shooting, a church council, a hoax, demolished buildings,
+      consulates, a hotel, schools), adds `kind` and `summary`. The two "Food & drink" entries were pavilions → re-filed; **no food places yet**.
       To do: 12-month pageviews (rate-limited, see lessons), food places, own-words blurbs, best_time/indoor, walks, boat trips.
 - [ ] Phase 2 — QA script + `qa/index.html` 🛑 Cem reviews (`qa/preview.html` is a quick data map for now)
 - [~] Phase 3 — started early at Cem's request (2026-11-05), on provisional data: theme tokens, config-driven layers,
@@ -215,4 +220,10 @@ Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrase
 - **Map padding moves the "centre"** (2026-11-05): with the bottom sheet, `easeTo({offset})` lands in the wrong place.
   Pass `padding` for the panel that will cover the map, then restore with `setSheet(S.sheet)`.
 - **Service worker serves stale JS in the preview** (2026-11-05): unregister + clear caches, and bump `VERSION` in `sw.js` when files change.
+- **Gallery photos spilled out of their frame** (2026-11-06): in a grid slide, `height: 100%` on a portrait `<img>` didn't hold, so it
+  overflowed (562 px in a 300 px gallery) and could be dragged up/down. Fix: `position: absolute; inset: 0` + `overflow-y: hidden` on the track.
+- **Splash "tap twice"** (2026-11-06): the forecast arrival re-rendered the whole splash and replaced the button mid-tap; also `focus()` drew the outline.
+  Update only the forecast block; don't focus buttons from code.
+- **Wikipedia plain-text extracts can have unclosed brackets** (2026-11-06): e.g. "Mecidiyeköy (Turkish pronunciation: [..] is a …". Strip brackets
+  with a depth counter, and when unbalanced cut from the bracket to the main verb (`08_finish_places.py`).
 - **data.ibb.gov.tr timed out from here** (2026-11-05): Istanbul's open-data portal may block non-Turkish IPs; don't depend on it.

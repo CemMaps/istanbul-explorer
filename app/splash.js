@@ -47,8 +47,7 @@ function confetti(level) {
   return `<div class="confetti" aria-hidden="true">${h}</div>`;
 }
 
-export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
-  const m = mood(cfg);
+function forecastHtml(cfg, fc, m) {
   const days = cfg.trip.days;
   const cells = days.map((d) => {
     const w = fc?.days?.[d.date];
@@ -61,6 +60,17 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
   const note = fc?.sample ? `<span class="tag-sample">Sample forecast</span>`
     : fc?.status === "too-early" || !fc ? "The forecast will appear about two weeks before the trip."
     : fc?.status === "error" ? "Couldn't load the forecast just now." : "Forecast: Open-Meteo";
+  return `<ul class="sp-days">${cells}</ul><p class="sp-note">${note}</p>`;
+}
+
+// When the forecast arrives, only the forecast block changes (the button stays, so a tap is never lost).
+export function updateSplashForecast(el, { cfg, fc }) {
+  const box = el.querySelector(".sp-fc");
+  if (box) box.innerHTML = forecastHtml(cfg, fc, mood(cfg));
+}
+
+export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
+  const m = mood(cfg);
   el.dataset.level = m.level;
   // Sunset over the Golden Horn (Wikimedia Commons; credited on the Photo credits screen via places.geojson),
   // drifting slowly like a drone shot.
@@ -70,25 +80,17 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
     <div class="sp-scrim" aria-hidden="true"></div>
     ${confetti(m.level)}
     <div class="sp-inner">
-      <div class="sp-top">
-        ${theme.app.logo ? `<img class="sp-logo" src="${esc(theme.app.logo)}" alt="">` : ""}
-        <span class="sp-eyebrow">${esc(theme.app.name)}</span>
-      </div>
       <div class="sp-hero">
         <h1 class="sp-big">${esc(m.big)}</h1>
         ${m.unit ? `<div class="sp-unit">${esc(m.unit)}</div>` : ""}
         ${m.line ? `<p class="sp-line">${esc(m.line)}</p>` : ""}
       </div>
-      <div class="sp-fc">
-        <ul class="sp-days">${cells}</ul>
-        <p class="sp-note">${note}</p>
-      </div>
+      <div class="sp-fc">${forecastHtml(cfg, fc, m)}</div>
       <button class="sp-go" id="sp-go">Explore Istanbul ${icon("chevronRight", 20)}</button>
     </div>`;
   el.hidden = false;
   el.classList.remove("is-leaving");
   const go = el.querySelector("#sp-go");
-  go.focus({ preventScroll: true });
   go.addEventListener("click", () => {
     el.classList.add("is-leaving");
     setTimeout(() => { el.hidden = true; onGo?.(); }, 900);

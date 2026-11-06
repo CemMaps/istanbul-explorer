@@ -38,6 +38,7 @@
       </div>
 
       <div id="map" class="map" aria-label="Map"></div>
+      <div id="map-loading" class="map-loading" role="status"><span class="ml-pill"><span class="ml-spin" aria-hidden="true"></span>Loading the map…</span></div>
       <div class="map-buttons">
         <!-- Vibe: the main map action. The glyph is a tiny patchwork of neighbourhoods in the vibe-map colours,
              i.e. a preview of what the button does (colour the map by what each area feels like). -->
@@ -56,11 +57,13 @@
         <button id="btn-here" class="fab" aria-label="What's here? Tap, then tap the map" aria-pressed="false"><span data-icon="here" data-size="28"></span></button>
       </div>
       <div class="map-buttons-bottom">
+        <button id="btn-base" class="fab" aria-label="Change the map style" aria-expanded="false"><span data-icon="mapStyle"></span></button>
         <button id="btn-home" class="fab" aria-label="Centre on our flat"><span data-icon="home"></span></button>
       </div>
       <div id="here-hint" class="map-hint" hidden>Tap anywhere on the map</div>
       <div id="plans-legend" class="plans-legend" hidden></div>
-      <div class="map-credit" aria-hidden="true">© OpenStreetMap · © CARTO</div>
+      <div id="base-pop" class="base-pop" role="dialog" aria-label="Map style" hidden></div>
+      <div id="map-credit" class="map-credit" aria-hidden="true">© OpenStreetMap · © CARTO</div>
 
       <section id="vibe-legend" class="vibe-panel" aria-label="Neighbourhood vibe legend" hidden></section>
       <section id="sheet" class="sheet" data-state="peek" aria-label="Places in view">
@@ -128,7 +131,7 @@
     <nav class="tabbar" aria-label="Main">
       <button class="tab is-active" data-screen="explore"><span data-icon="compass"></span><span>Explore</span></button>
       <button class="tab" data-screen="saved"><span data-icon="heart"></span><span>Saved</span></button>
-      <button class="tab" data-screen="plan"><span data-icon="route"></span><span>Routes</span></button>
+      <button class="tab" data-screen="plan"><span data-icon="routeMap"></span><span>Routes</span></button>
       <button class="tab" data-screen="more"><span data-icon="more"></span><span>More</span></button>
     </nav>
 

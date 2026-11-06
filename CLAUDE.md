@@ -83,6 +83,7 @@ Ignore all other skills, plugins and MCP tools. Built-in browser pane OK for pho
 | Food icons (2026-11-06) | `local` tier icon size 0.42 (others 0.62+), icon-padding 3, 90 % opacity: fewer, smaller icons at street zoom, the rest stay dots. 4,083 food places. |
 | Places of worship (2026-11-06) | One category, but each place has `kind` (mosque/church/synagogue/monastery/tomb) for labels; chips "Mosques" and "Churches & synagogues". A chip with no matching data is hidden (Food, until food places exist). |
 | PWA (2026-11-06) | Installable: PNG icons in `app/icons/` (rendered from the SVGs with headless Edge), manifest with maskable icon, apple-touch-icon; More shows "Install the app" (Android prompt / iPhone Share → Add to Home Screen). |
+| Round 10 (2026-11-06) | Filter chips keep the view (zoom out to results only if none in view); typed search still frames results. Edge: clear band 12 px (was 30), outline opacity 0.18. Churches/monasteries and synagogues have their own pin icons (`kindIcons` in config, `catslug` gets `-<kind>`). **Map style** button (stacked sheets icon) above Home: Our map (theme CARTO vector) / Streets (Esri World Street Map) / Satellite (Esri World Imagery + Esri labels) / Hills (OpenTopoMap, max z17); raster under our layers, vector basemap hidden; `oit:basemap` in localStorage; credit line changes. CARTO raster tiles now need a key, so not used. Routes tab icon = folded map with a route (`routeMap`). New app icon: mosque skyline at sunset over the water (`app/icons/*.svg` → PNG via headless Edge). Place card rises 48 px + fades (0.34 s), sinks out (0.2 s); selected pin fades out (no flash). Area tags: full class name ("Everyday residential") + one sentence incl. the lifestyle feel (no bare "Mixed"). Map loading pill until the first idle. Sheet drags by handle, bar and list header; flicks snap one step. Vibe legend selected = navy filled like chips. Countdown moods: ≤30 golden trip block, ≤14 golden unit + line, ≤7 / tomorrow / day 1 golden glowing number + pulsing today tick; plane on "Tomorrow!", day 1 and last day; new theme token `sun` #F6C25B. Date preview: `?today=YYYY-MM-DD` or the edit-mode slider (top of the editor). List titles use chip `title` ("Iconic landmarks in view"). |
 | Mockup tweaks (agreed) | Google Maps button = quiet secondary with official pin icon; plan step numbers in cobalt (not red); filter chips show an active count. |
 
 ## Area character ("vibe") — v2, researched (2026-11-05)
@@ -200,9 +201,13 @@ Prominence on the map: `must-see` shows from low zoom; `worth-it` mid zoom; `bon
       with contrast check, basemap, pins, sample-forecast toggle, save locally / export theme.json), credits screen,
       offline `sw.js` (https only). To do: a11y pass, loading/empty polish, deploy.
 
-Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrases, PWA install, transport layer, live sync.
+Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrases, transport layer, live sync.
 
 ## Lessons
+- **CARTO raster tiles need an API key now** (2026-11-06): `basemaps.cartocdn.com/rastertiles/*` and `{a-d}.basemaps.cartocdn.com/light_all/*` return a 2 kB "API key required" PNG. The GL vector styles still work keyless. Esri `server.arcgisonline.com` tiles and OpenTopoMap are keyless.
+- **The preview keeps old ES modules after edits** (2026-11-06): reloads served cached `icons.js` even after unregistering the SW and `cache: "reload"` fetches. Test on a fresh loopback origin (127.0.0.2, .3 …: each has its own cache and localStorage). Real users get the SW `VERSION` bump.
+- **Sheet drag: listen for move/up on `window`** (2026-11-06): a fast first move can land outside the sheet, so listeners on the sheet never see it. Eat the click that follows a drag (capture phase).
+- **Theme `golden` is a pale tint, not gold** (2026-11-06): use `sun` for gold accents on the splash.
 - **Chromium blocks WebGL for an origin after repeated context loss** (2026-11-06): many reloads/theme switches in the preview → "Web page caused context loss and was blocked", blank map. Not an app bug: open a new tab on another origin (127.0.0.1 vs localhost).
 - **Generic class names collide** (2026-11-06): the Routes day buttons used `.seg`, which already styled the vibe legend switch (padding, background), so days sat off-centre. Prefix new component classes.
 - **DOM overlays added to a MapLibre container outlive `map.remove()`** (2026-11-06): the blur veil stayed after a theme switch (whole map blurred). Remove them on the map's `remove` event.

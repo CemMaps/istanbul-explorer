@@ -33,7 +33,7 @@
     "local": { "minzoom": 15.4, "size": 0.42, "label": "Local" }
   },
   "categories": [
-    { "id": "Mosques & churches", "short": "Mosque", "icon": "dome", "kinds": { "mosque": "Mosque", "church": "Church", "synagogue": "Synagogue", "monastery": "Monastery", "tomb": "Tomb" } },
+    { "id": "Mosques & churches", "short": "Mosque", "icon": "dome", "kindIcons": { "church": "church", "monastery": "church", "synagogue": "synagogue" }, "kinds": { "mosque": "Mosque", "church": "Church", "synagogue": "Synagogue", "monastery": "Monastery", "tomb": "Tomb" } },
     { "id": "Palaces & museums", "short": "Museum", "icon": "columns" },
     { "id": "Viewpoints", "short": "Viewpoint", "icon": "eye" },
     { "id": "Bazaars & markets", "short": "Bazaar", "icon": "bag" },
@@ -43,14 +43,14 @@
   ],
   "chips": [
     { "id": "all", "label": "All" },
-    { "id": "iconic", "label": "Iconic", "match": { "tier": ["must-see"] } },
+    { "id": "iconic", "label": "Iconic", "title": "Iconic landmarks", "match": { "tier": ["must-see"] } },
     { "id": "food", "label": "Food & drink", "match": { "category": ["Food & drink"] } },
-    { "id": "views", "label": "Viewpoints", "match": { "category": ["Viewpoints"] } },
+    { "id": "views", "label": "Viewpoints", "title": "Viewpoints", "match": { "category": ["Viewpoints"] } },
     { "id": "mosques", "label": "Mosques", "match": { "category": ["Mosques & churches"], "kind": ["mosque", "tomb"] } },
     { "id": "churches", "label": "Churches & synagogues", "match": { "category": ["Mosques & churches"], "kind": ["church", "synagogue", "monastery"] } },
     { "id": "museums", "label": "Palaces & museums", "match": { "category": ["Palaces & museums"] } },
-    { "id": "bazaars", "label": "Bazaars", "match": { "category": ["Bazaars & markets"] } },
-    { "id": "parks", "label": "Parks", "match": { "category": ["Parks & waterfront"] } }
+    { "id": "bazaars", "label": "Bazaars", "title": "Bazaars & markets", "match": { "category": ["Bazaars & markets"] } },
+    { "id": "parks", "label": "Parks", "title": "Parks & waterfront", "match": { "category": ["Parks & waterfront"] } }
   ],
   "vibe": {
     "file": "../data/areas.geojson",

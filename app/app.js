@@ -1,6 +1,6 @@
 import { loadTheme, catVar } from "./theme.js";
 import { icon } from "./icons.js";
-import { createMap } from "./map.js";
+import { createMap, EXTRA_BASEMAPS } from "./map.js";
 import { store } from "./store.js";
 import { tripStatus, sunTimes, forecast, fmtTime, istanbulToday, istMinutes } from "./sky.js";
 import { order, legMode, legsGeometry } from "./routes.js";
@@ -28,6 +28,7 @@ let DATA = null;
 let CFG, THEME, PLACES, BYID, STOPS, FERRIES, AREAS, MAP, FC = null, MOCK = false;
 
 const catCfg = (id) => CFG.categories.find((c) => c.id === id) || { short: id, icon: "pin" };
+const iconOf = (p) => catCfg(p.category).kindIcons?.[p.kind] || catCfg(p.category).icon; // churches get their own icon
 // Short type label: "Church", "Synagogue"… for places of worship (data: `kind`), else the category's short name.
 const typeLabel = (p) => (p.kind && catCfg(p.category).kinds?.[p.kind]) || catCfg(p.category).short;
 const tierRank = { "must-see": 0, "worth-it": 1, bonus: 2, local: 3 };
@@ -62,7 +63,11 @@ function refreshPlaces({ fit = false } = {}) {
   MAP.showAllTiers(filterActive());
   MAP.setPlaces(PLACES);
   renderChips();
-  if (fit && filterActive()) fitToMatches();
+  // Chips keep the map where it is; only when nothing matching is in view does it zoom out to the results.
+  // A typed search always frames its results (2026-11-06).
+  const anyInView = () => { const b = MAP.map.getBounds(); return PLACES.features.some((f) => !f.properties.dim && b.contains(f.geometry.coordinates)); };
+  if (fit === true && filterActive()) fitToMatches();
+  else if (fit === "ifNone" && filterActive() && !anyInView()) fitToMatches();
   else renderList();
 }
 function fitToMatches() {
@@ -82,7 +87,7 @@ function thumb(p, { pill = true, heart = true, badge = "" } = {}) {
   const ph = p.photos?.[0];
   return `<div class="thumb" style="--cat: var(${catVar(p.category)})">
     ${ph ? `<img loading="lazy" alt="" src="${photoUrl(ph.file, THUMB)}" onerror="this.remove()">` : ""}
-    ${icon(catCfg(p.category).icon, 30)}
+    ${icon(iconOf(p), 30)}
     ${pill && !badge ? `<span class="pill">${esc(typeLabel(p))}</span>` : ""}
     ${badge ? `<span class="badge-both">${esc(badge)}</span>` : ""}
     ${heart ? `<span class="heart ${store.isHearted(p.id) ? "is-on" : ""}" data-heart="${esc(p.id)}" role="button" tabindex="0" aria-label="Save ${esc(p.name)}" aria-pressed="${store.isHearted(p.id)}">${icon("heart", 18)}</span>` : ""}
@@ -111,7 +116,7 @@ $("#chips").addEventListener("click", (e) => {
     return;
   }
   S.chip = S.chip === b.dataset.chip ? "all" : b.dataset.chip;
-  refreshPlaces({ fit: true });
+  refreshPlaces({ fit: "ifNone" });
 });
 // Search (2026-11-06): typing only shows suggestions (the map stays put); Enter, or "Search for …", filters the map.
 // An empty, focused box offers a few example searches.
@@ -147,7 +152,7 @@ function renderSuggest() {
     .sort((a, b) => (norm(b.name).startsWith(n) - norm(a.name).startsWith(n)) || tierRank[a.tier] - tierRank[b.tier] || b.score - a.score)
     .slice(0, SUGGEST_MAX);
   box.innerHTML = `<button class="sg-row sg-all" data-sg-q="${esc(q)}">${icon("search", 18)}<span>Search for “${esc(q)}”<small>${m.length ? `${m.length} place${m.length > 1 ? "s" : ""} on the map` : "No matches yet"}</small></span></button>`
-    + top.map((p) => `<button class="sg-row" data-sg-open="${esc(p.id)}"><span class="sg-ico" style="--cat: var(${catVar(p.category)})">${icon(catCfg(p.category).icon, 16)}</span><span>${esc(p.name)}<small>${esc(typeLabel(p))} · ${esc(p.mahalle || p.area || "")}</small></span></button>`).join("");
+    + top.map((p) => `<button class="sg-row" data-sg-open="${esc(p.id)}"><span class="sg-ico" style="--cat: var(${catVar(p.category)})">${icon(iconOf(p), 16)}</span><span>${esc(p.name)}<small>${esc(typeLabel(p))} · ${esc(p.mahalle || p.area || "")}</small></span></button>`).join("");
   box.hidden = false;
 }
 function runSearch(q) {
@@ -201,7 +206,7 @@ function renderList() {
   const items = inViewPlaces();
   // Zoomed out to the whole city, "in view" means "in Istanbul": say so, and nudge to zoom in (2026-11-06).
   const city = MAP.map.getZoom() < 11.8;
-  $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${CFG.chips.find((c) => c.id === S.chip).label} in view` : city ? "Top picks in Istanbul" : "Top picks in view";
+  $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${(({ title, label }) => title || label)(CFG.chips.find((c) => c.id === S.chip))} ${city ? "in Istanbul" : "in view"}` : city ? "Top picks in Istanbul" : "Top picks in view";
   const sub = (x) => `${esc(x.p.area)}${S.near ? ` · ${fmtDist(x.d)}` : ""}`;
   $("#cards").innerHTML = items.length
     ? items.slice(0, 12).map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p)}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${sub(x)}</div></button>`).join("")
@@ -232,27 +237,46 @@ function setSheet(state) {
 }
 $("#sheet-toggle").addEventListener("click", () => setSheet(S.sheet === "open" ? "peek" : "open"));
 $("#sheet-bar").addEventListener("click", () => setSheet("peek"));
+// Drag the sheet by its handle, the "N places" bar or the list header (2026-11-06: was the handle only).
+// A flick snaps one step in its direction; a slow drag snaps to the nearest height; a tap on the handle steps up.
 (() => {
-  const handle = $("#sheet-handle"), sheet = $("#sheet");
-  let y0 = null, h0, moved;
-  handle.addEventListener("pointerdown", (e) => { y0 = e.clientY; h0 = sheet.offsetHeight; moved = false; sheet.classList.add("is-dragging"); handle.setPointerCapture(e.pointerId); });
-  handle.addEventListener("pointermove", (e) => {
+  const sheet = $("#sheet");
+  const ZONES = "#sheet-handle, #sheet-bar, .sheet-head";
+  const ORDER = ["closed", "peek", "open"];
+  let y0 = null, h0, moved, zone, last, eatClick = false;
+  sheet.addEventListener("pointerdown", (e) => {
+    zone = e.target.closest(ZONES);
+    if (!zone || e.button > 0) return;
+    y0 = e.clientY; h0 = sheet.offsetHeight; moved = false; last = [{ y: e.clientY, t: e.timeStamp }];
+  });
+  window.addEventListener("pointermove", (e) => { // window: a fast first move can land outside the sheet
     if (y0 == null) return;
-    const dy = y0 - e.clientY; if (Math.abs(dy) > 5) moved = true;
+    const dy = y0 - e.clientY;
+    if (!moved && Math.abs(dy) < 6) return; // still a tap
+    if (!moved) { moved = true; sheet.classList.add("is-dragging"); try { zone.setPointerCapture(e.pointerId); } catch {} }
     const h = sheetHeights();
     sheet.style.setProperty("--sheet-h", `${Math.max(h.closed, Math.min(h.open, h0 + dy))}px`);
+    last.push({ y: e.clientY, t: e.timeStamp }); if (last.length > 5) last.shift();
   });
-  const end = () => {
+  const end = (e) => {
     if (y0 == null) return;
-    sheet.classList.remove("is-dragging");
     y0 = null;
-    if (!moved) return setSheet(S.sheet === "closed" ? "peek" : S.sheet === "peek" ? "open" : "peek");
+    sheet.classList.remove("is-dragging");
+    if (!moved) { if (zone.id === "sheet-handle") setSheet(S.sheet === "closed" ? "peek" : S.sheet === "peek" ? "open" : "peek"); return; }
+    eatClick = true; setTimeout(() => (eatClick = false), 50);
+    const a = last[0], b = last[last.length - 1];
+    const v = b.t > a.t ? (a.y - b.y) / (b.t - a.t) : 0; // px/ms, up is positive
     const h = sheetHeights(), cur = sheet.offsetHeight;
-    const nearest = Object.entries(h).sort((a, b) => Math.abs(a[1] - cur) - Math.abs(b[1] - cur))[0][0];
-    setSheet(nearest);
+    let to;
+    if (Math.abs(v) > 0.45) { // flick: next state in that direction from where the finger let go
+      const above = ORDER.filter((k) => h[k] > cur + 4), below = ORDER.filter((k) => h[k] < cur - 4);
+      to = v > 0 ? (above[0] || "open") : (below[below.length - 1] || "closed");
+    } else to = Object.entries(h).sort((x, y) => Math.abs(x[1] - cur) - Math.abs(y[1] - cur))[0][0];
+    setSheet(to);
   };
-  handle.addEventListener("pointerup", end);
-  handle.addEventListener("pointercancel", end);
+  window.addEventListener("pointerup", end);
+  window.addEventListener("pointercancel", end);
+  sheet.addEventListener("click", (e) => { if (eatClick) { e.stopPropagation(); e.preventDefault(); } }, true); // no tap after a drag
 })();
 
 // ---------- hearts + opening ----------
@@ -280,14 +304,20 @@ function dayButtons(id) {
   return CFG.trip.days.map((d) => { const on = store.inDay(id, d.id);
     return `<button class="day-btn" data-day="${d.id}" aria-pressed="${on}"><span class="tick">${icon("check", 16)}</span>${d.label}</button>`; }).join("");
 }
-// Area character ("vibe") + lifestyle in words, e.g. "Bohemian, with nightlife · Cosmopolitan" (data: 07_areas.py).
+// Area character ("vibe") + lifestyle in words, e.g. "Bohemian & creative, with nightlife" (data: 07_areas.py).
 const vibeCls = (id) => CFG.vibe.classes.find((c) => c.id === id);
 const vibeLife = (id) => CFG.vibe.lifestyles.find((l) => l.id === id);
 function vibeWords(primary, secondary, lifestyle) {
   const c = vibeCls(primary);
   if (!c) return "";
   const s = secondary && vibeCls(secondary);
-  return `${c.short}${s ? `, with ${s.short.toLowerCase()}` : ""}${vibeLife(lifestyle) ? ` · ${vibeLife(lifestyle).label}` : ""}`;
+  // Full class name (2026-11-06: "Residential · Mixed" was unclear). The lifestyle is said in words by vibeFeel().
+  return `${c.label}${s ? `, with ${s.short.toLowerCase()}` : ""}`;
+}
+// One plain sentence: what the street life is like, plus the lifestyle feel ("Mosques and meyhanes side by side").
+function vibeFeel(primary, lifestyle) {
+  const c = vibeCls(primary), l = vibeLife(lifestyle);
+  return [c?.feel, l?.feel].filter(Boolean).map((x) => x.replace(/\.?$/, ".")).join(" ");
 }
 
 function openPlace(id) {
@@ -307,7 +337,7 @@ function openPlace(id) {
   const real = photos.filter(Boolean);
   el.innerHTML = `
     <div class="gallery">
-      <div class="gallery-track">${photos.map((ph, i) => `<div class="gallery-slide">${ph ? `<img alt="${i ? "" : esc(p.name)}" ${i > 1 ? 'loading="lazy"' : ""} draggable="false" data-zoom="${i}" src="${photoUrl(ph.file, 900)}" onerror="this.remove()">` : icon(catCfg(p.category).icon, 64)}</div>`).join("")}</div>
+      <div class="gallery-track">${photos.map((ph, i) => `<div class="gallery-slide">${ph ? `<img alt="${i ? "" : esc(p.name)}" ${i > 1 ? 'loading="lazy"' : ""} draggable="false" data-zoom="${i}" src="${photoUrl(ph.file, 900)}" onerror="this.remove()">` : icon(iconOf(p), 64)}</div>`).join("")}</div>
       <button class="icon-btn g-back" data-close aria-label="Back">${icon("back")}</button>
       <button class="icon-btn g-share" data-share-place aria-label="Share this place">${icon("share")}</button>
       <button class="icon-btn g-heart ${store.isHearted(id) ? "is-on" : ""}" data-heart="${esc(id)}" aria-label="Save" aria-pressed="${store.isHearted(id)}">${icon("heart")}</button>
@@ -323,6 +353,11 @@ function openPlace(id) {
       <div class="days" id="days">${dayButtons(id)}</div>
       ${near.length ? `<h2 class="section-title">Close by</h2><div class="nearby">${near.map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false })}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${Math.max(1, Math.round(x.d / 80))} min walk</div></button>`).join("")}</div>` : ""}
     </div>`;
+  // Slide up + fade in when the card opens from the map; a card opened from "Close by" just swaps in place.
+  const wasOpen = !el.hidden && !el.classList.contains("is-closing");
+  el.classList.remove("is-closing");
+  clearTimeout(placeT);
+  if (!wasOpen) { el.classList.remove("is-opening"); void el.offsetWidth; el.classList.add("is-opening"); }
   el.hidden = false;
   el.scrollTop = 0;
   const track = $(".gallery-track", el), count = $(".g-count", el);
@@ -380,8 +415,15 @@ async function sharePlace(id) {
   }
   try { await navigator.clipboard.writeText(url); toast("Link copied"); } catch { prompt("Copy this link:", url); }
 }
+let placeT;
 function closePlace() {
-  $("#place").hidden = true; S.selected = null; MAP.select(null);
+  const el = $("#place");
+  // Slide down + fade out (about 0.2 s) while the selected pin fades on the map: no flash on the way back.
+  el.classList.remove("is-opening");
+  el.classList.add("is-closing");
+  clearTimeout(placeT);
+  placeT = setTimeout(() => { el.hidden = true; el.classList.remove("is-closing"); }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 200);
+  S.selected = null; MAP.select(null);
   history.replaceState(null, "", location.pathname + location.search);
   renderList();
 }
@@ -429,7 +471,7 @@ function showCredits() {
   rows.unshift(SPLASH_CREDIT);
   openDialog(`<h2>Credits</h2>
     <p>Photos from <b>Wikimedia Commons</b>, used under their licences. Place data from <b>Wikidata</b> (CC0); short descriptions from <b>Wikipedia</b> (CC BY-SA 4.0).
-    Map data © <b>OpenStreetMap</b> contributors (ODbL), basemap © <b>CARTO</b>. Weather by <b>Open-Meteo</b> (CC BY 4.0).</p>
+    Map data © <b>OpenStreetMap</b> contributors (ODbL), basemap © <b>CARTO</b>. Satellite imagery © <b>Esri</b>, Maxar, Earthstar Geographics; topographic map © <b>OpenTopoMap</b> (CC BY-SA), SRTM. Weather by <b>Open-Meteo</b> (CC BY 4.0).</p>
     <button class="btn-secondary" data-close-dialog>Close</button>
     <ul class="credits">${rows.map((r) => `<li><b>${esc(r.place)}</b>: “${esc(r.file)}” by ${esc(r.author || "unknown")}, ${esc(r.licence || "see Commons")}</li>`).join("")}</ul>`);
   $("#dialog-card").addEventListener("click", (e) => { if (e.target.closest("[data-close-dialog]")) $("#dialog").hidden = true; });
@@ -453,6 +495,8 @@ async function showSplash(after) {
   if (!FC) { await getForecast(); if (!el.hidden && !el.classList.contains("is-leaving")) updateSplashForecast(el, { cfg: CFG, fc: FC }); }
 }
 $("#open-splash").addEventListener("click", () => showSplash());
+// Edit mode's date slider: show the splash for the previewed day (and refresh the More card).
+window.addEventListener("oit:preview-date", () => { renderBadge(); showSplash(); });
 
 // ---------- Look (theme picker for everyone) ----------
 const LOCAL_THEME = "oit:theme-local";
@@ -549,6 +593,51 @@ function renderInstall() {
 }
 
 // ---------- buttons ----------
+// ---------- map style (basemap) picker ----------
+// Four maps: the theme's own map, a detailed street map, satellite with labels, topographic. Remembered per phone.
+const BASES = [
+  { id: "default", label: "Our map", hint: "Clean, matches the theme" },
+  { id: "streets", label: "Streets", hint: "More detail" },
+  { id: "satellite", label: "Satellite", hint: "With labels" },
+  { id: "topo", label: "Hills", hint: "Topographic" },
+];
+const BASE_KEY = "oit:basemap";
+const getBase = () => { try { const b = localStorage.getItem(BASE_KEY); return EXTRA_BASEMAPS[b] ? b : "default"; } catch { return "default"; } };
+function applyBase() {
+  const id = getBase();
+  MAP.setBasemap(id);
+  $("#map-credit").textContent = EXTRA_BASEMAPS[id]?.credit || "© OpenStreetMap · © CARTO";
+  document.querySelector(".app").dataset.base = id;
+}
+function baseThumb(id) { // one z12 tile over the old city as a preview; our own map is drawn from the theme colours
+  if (id === "default") return `<svg class="bp-own" viewBox="0 0 60 40" aria-hidden="true"><rect width="60" height="40" style="fill: var(--c-map-land)"/>
+    <path d="M0 27c9-2 16 1 22-4s7-12 13-15 13-2 25-6V0H38c-4 6-9 7-14 12S12 22 0 21z" style="fill: var(--c-map-water)"/>
+    <path d="M40 40c1-8 6-12 12-14s8-1 8-1v15z" style="fill: var(--c-map-park)"/>
+    <path d="M4 36l14-6 10 3 12-9M30 40l-3-7" fill="none" style="stroke: var(--c-map-road)" stroke-width="1.6"/></svg>`;
+  const u = EXTRA_BASEMAPS[id].tiles[0].replace("{z}", 12).replace("{x}", 2377).replace("{y}", 1535);
+  return `<img src="${u}" alt="" loading="lazy">`;
+}
+function toggleBasePop(open = $("#base-pop").hidden) {
+  const pop = $("#base-pop");
+  $("#btn-base").setAttribute("aria-expanded", open);
+  $("#btn-base").classList.toggle("is-on", open);
+  if (!open) { pop.hidden = true; return; }
+  const cur = getBase();
+  pop.innerHTML = `<p class="bp-title">Map style</p><div class="bp-grid">${BASES.map((b) => `<button class="bp-opt" data-base="${b.id}" aria-checked="${b.id === cur}" role="radio">
+      ${baseThumb(b.id)}<span class="bp-label">${b.label}</span><span class="bp-hint">${b.hint}</span></button>`).join("")}</div>`;
+  pop.hidden = false;
+}
+$("#btn-base").addEventListener("click", (e) => { e.stopPropagation(); toggleBasePop(); });
+$("#base-pop").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-base]");
+  if (!b) return;
+  try { localStorage.setItem(BASE_KEY, b.dataset.base); } catch {}
+  applyBase();
+  $("#base-pop").querySelectorAll("[data-base]").forEach((x) => x.setAttribute("aria-checked", x === b));
+  setTimeout(() => toggleBasePop(false), 180);
+});
+document.addEventListener("pointerdown", (e) => { if (!$("#base-pop").hidden && !e.target.closest("#base-pop, #btn-base")) toggleBasePop(false); });
+
 $("#btn-home").addEventListener("click", () => MAP.map.flyTo({ center: CFG.map.home, zoom: 15, duration: 800 }));
 $("#btn-near").addEventListener("click", () => {
   const b = $("#btn-near");
@@ -599,7 +688,7 @@ function vibeTap(e) {
   const a = areaAt([e.lngLat.lng, e.lngLat.lat]);
   if (!a) return;
   const cls = vibeCls(a.primary);
-  toast(`${vibeWords(a.primary, a.secondary, a.lifestyle)}. ${cls?.feel || ""}`);
+  toast(`${vibeWords(a.primary, a.secondary, a.lifestyle)}. ${vibeFeel(a.primary, a.lifestyle)}`);
 }
 function setVibe(mode) {
   const wasOn = !!S.vibe;
@@ -661,7 +750,7 @@ function onMapClick(e) {
         <div><small>What's here</small><h2>${esc(where)}</h2></div>
         <button class="icon-btn small" data-close-here aria-label="Close">${icon("close")}</button>
       </div>
-      ${cls ? `<p class="here-vibe"><span class="tag vibe" style="--vibe: var(--vibe-${area.primary})">${esc(words)}</span></p><p class="here-feel">${esc(cls.feel)}</p>`
+      ${cls ? `<p class="here-vibe"><span class="tag vibe" style="--vibe: var(--vibe-${area.primary})">${esc(words)}</span></p><p class="here-feel">${esc(vibeFeel(area.primary, area.lifestyle))}</p>`
         : `<p class="here-feel">Out on the water, or outside the area we mapped.</p>`}
       <h3 class="section-title">${near.length ? `Best within a ${walk(HERE_M).replace(" walk", "")} walk` : "Nothing we've mapped close by"}</h3>
       <ol class="here-list">${near.slice(0, 8).map((x, i) => `<li><button class="row" data-here-open="${esc(x.p.id)}">
@@ -918,8 +1007,8 @@ $("#screen-plan").addEventListener("click", (e) => {
     $("#route-new")?.addEventListener("click", () => { const n = store.newRoute(r.day); S.planRoute = n.id; done(); });
     $("#route-share").addEventListener("click", () => {
       $("#dialog").hidden = true;
-      if (!store.get().hearts.length) return toast("Add a few places first");
-      shareMyPicks().then((res) => { if (res === "copied") toast("Link copied. Paste it in the family chat."); });
+      if (!store.get().hearts.length) return toast("Save a few places first");
+      shareMyPicks().then((res) => { if (res === "copied") toast("Link copied. Paste it in the group chat."); });
     });
     $("#rename-form").addEventListener("submit", (ev) => { ev.preventDefault(); store.renameRoute(r.id, $("#rename-input").value.trim()); done(); });
     $("#route-delete").addEventListener("click", () => {
@@ -941,13 +1030,25 @@ $("#screen-plan").addEventListener("click", (e) => {
 });
 store.on(() => { if (MAP) renderMapRoutes(); });
 
+// Loading veil over the map until the first tiles and pins have drawn (or 8 s, whichever comes first).
+function mapLoading(on) {
+  const el = $("#map-loading");
+  if (on) { el.hidden = false; el.classList.remove("is-done"); return; }
+  el.classList.add("is-done");
+  setTimeout(() => { if (el.classList.contains("is-done")) el.hidden = true; }, 350);
+}
 async function buildMap(camera) {
+  mapLoading(true);
   MAP = await createMap({ container: "map", theme: THEME, config: CFG, data: DATA, onPlace: (id) => { if (!S.here) openPlace(id); } });
   if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
   if (camera) MAP.map.jumpTo(camera);
   MAP.map.on("moveend", renderList);
   MAP.map.on("click", onMapClick);
+  applyBase();
   renderMapRoutes();
+  const done = () => { clearTimeout(t); mapLoading(false); };
+  const t = setTimeout(done, 8000);
+  MAP.map.once("idle", done);
 }
 // Theme change: re-apply tokens and rebuild the maps in place (no page reload).
 async function switchTheme() {
@@ -982,7 +1083,8 @@ async function switchTheme() {
   const [places, mask, ferries, stops, fixed, areas] = await Promise.all([L.places, L.mask, L.ferries, L.stops, L.fixed, CFG.vibe.file].map(get));
   const labelCats = new Set(CFG.categories.filter((c) => c.asLabel).map((c) => c.id));
   for (const f of places.features) {
-    f.properties.catslug = slug(f.properties.category);
+    const ki = catCfg(f.properties.category).kindIcons?.[f.properties.kind];
+    f.properties.catslug = slug(f.properties.category) + (ki ? `-${f.properties.kind}` : "");
     f.properties.asLabel = labelCats.has(f.properties.category);
     f.properties.dim = false;
   }
@@ -1008,7 +1110,7 @@ async function switchTheme() {
   if (m) openPlace(decodeURIComponent(m[1]));
   mapReady = true;
   if (splashGone && !store.get().name) askName();
-  if (editMod) editMod.startEditMode(THEME);
+  if (editMod) editMod.startEditMode(THEME, CFG);
   getForecast();
   if (swReady()) navigator.serviceWorker.register("sw.js").catch(() => {});
 })();

@@ -7,6 +7,20 @@ const BASEMAPS = {
   voyager: "https://basemaps.cartocdn.com/gl/voyager-gl-style/style.json",
   dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
 };
+// Extra basemaps (2026-11-06, Cem: satellite with labels, topographic; no 3D). Raster tiles, keyless, credited.
+// "default" is the theme's own CARTO vector map. The others are raster layers under our layers; the vector
+// basemap is hidden while one is on.
+// CARTO's raster tiles now need an API key (2026-11-06: "API key required" placeholder), so the street and label
+// tiles come from Esri's keyless services.
+export const EXTRA_BASEMAPS = {
+  streets: { tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"], max: 19,
+    credit: "Map © Esri, HERE, Garmin, © OpenStreetMap" },
+  satellite: { tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"], max: 19,
+    labels: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
+    credit: "Imagery © Esri, Maxar, Earthstar Geographics" },
+  topo: { tiles: ["a", "b", "c"].map((sub) => `https://${sub}.tile.opentopomap.org/{z}/{x}/{y}.png`), max: 17,
+    credit: "© OpenStreetMap · SRTM · © OpenTopoMap (CC BY-SA)" },
+};
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const FONT_REG = ["Montserrat Regular", "Open Sans Regular"];
 const FONT_BOLD = ["Montserrat Medium", "Open Sans Semibold"];
@@ -48,7 +62,7 @@ function frostOutside(map, rings) {
   const cv = document.createElement("canvas");
   const ctx = cv.getContext("2d", { willReadFrequently: true });
   // CLEAR_PX: a clear band just outside the line, so labels of places near the edge stay sharp (2026-11-06).
-  const Q = 4, FEATHER_M = 1600, OFF = 4000, CLEAR_PX = 30;
+  const Q = 4, FEATHER_M = 1600, OFF = 4000, CLEAR_PX = 12;
   let raf = 0;
   const draw = () => {
     raf = 0;
@@ -98,6 +112,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   });
   map.touchZoomRotate.disableRotation();
   await new Promise((r) => map.on("load", r));
+  const baseLayerIds = map.getStyle().layers.map((l) => l.id); // the vector basemap, hidden under a raster basemap
 
   // Recolour the basemap from theme tokens (only for the light basemaps).
   if (theme.basemap !== "dark") {
@@ -115,6 +130,11 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     const col = cssVar(catVar(c.id));
     map.addImage(`pin-${slug(c.id)}`, await pinImage(c.icon, col, bg, { filled: pinFilled }), { pixelRatio: 2 });
     map.addImage(`pin-${slug(c.id)}-sel`, await pinImage(c.icon, col, bg, { filled: !pinFilled }), { pixelRatio: 2 });
+    // Kinds with their own icon (churches, synagogues): same colour, own glyph; places get catslug "<cat>-<kind>".
+    for (const [kind, ic] of Object.entries(c.kindIcons || {})) {
+      map.addImage(`pin-${slug(c.id)}-${kind}`, await pinImage(ic, col, bg, { filled: pinFilled }), { pixelRatio: 2 });
+      map.addImage(`pin-${slug(c.id)}-${kind}-sel`, await pinImage(ic, col, bg, { filled: !pinFilled }), { pixelRatio: 2 });
+    }
   }
   const navy = cssVar("--c-navy");
   // On the dark basemap the navy home pin disappears: white icon + light outline there.
@@ -132,7 +152,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     paint: { "fill-color": cssVar("--c-surface"), "fill-opacity": frosted ? 0.18 : Math.max(theme.maskOpacity ?? 0.7, 0.78) } });
   // A very light outline, so the eye has an edge to rest on (2026-11-06).
   map.addLayer({ id: "mask-edge", type: "line", source: "mask",
-    paint: { "line-color": cssVar("--c-ink-2"), "line-width": 1, "line-opacity": 0.22 } });
+    paint: { "line-color": cssVar("--c-ink-2"), "line-width": 1, "line-opacity": 0.18 } });
   if (frosted) frostOutside(map, data.mask.features[0].geometry.coordinates.slice(1));
 
   // Vibe map: soft translucent fill under everything, off by default (character or lifestyle colouring).
@@ -225,7 +245,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     layout: { "icon-image": ["concat", "pin-", ["get", "catslug"], "-sel"], "icon-size": 1.15, "icon-allow-overlap": true, "icon-ignore-placement": true, "text-ignore-placement": true,
               "text-field": ["get", "name"], "text-font": FONT_BOLD, "text-size": 13, "text-offset": [0, 1.7], "text-anchor": "top",
               "text-allow-overlap": true },
-    paint: { "text-color": cssVar("--c-ink-inverse"), "text-halo-color": navy, "text-halo-width": 6 } });
+    paint: { "text-color": cssVar("--c-ink-inverse"), "text-halo-color": navy, "text-halo-width": 6, "icon-opacity": 1, "text-opacity": 1 } });
 
   // Fixed points: the flat + airport
   map.addSource("fixed", { type: "geojson", data: data.fixed });
@@ -275,6 +295,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   const baseFilter = Object.fromEntries(placeLayers.map((id) => [id, map.getFilter(id)]));
   const dotZoom = Object.fromEntries(dotLayers.map((id) => [id, map.getLayer(id).minzoom || 0]));
   const dotFilter = Object.fromEntries(dotLayers.map((id) => [id, map.getFilter(id)]));
+  let selT;
   return {
     map,
     // While a filter/search is active, matching places show at every zoom (so "zoom to results" works);
@@ -311,7 +332,34 @@ export async function createMap({ container, theme, config, data, onPlace }) {
       map.getSource("here").setData({ type: "FeatureCollection", features: feats });
     },
     setPlaces: (fc) => map.getSource("places").setData(fc),
-    select: (id) => map.setFilter("selected", ["==", ["get", "id"], id || ""]),
+    // Selecting shows the filled pin at once; deselecting fades it out (no flash when a card closes).
+    select(id) {
+      clearTimeout(selT);
+      if (id) {
+        map.setPaintProperty("selected", "icon-opacity-transition", { duration: 0, delay: 0 });
+        map.setPaintProperty("selected", "text-opacity-transition", { duration: 0, delay: 0 });
+        map.setPaintProperty("selected", "icon-opacity", 1); map.setPaintProperty("selected", "text-opacity", 1);
+        map.setFilter("selected", ["==", ["get", "id"], id]);
+      } else {
+        map.setPaintProperty("selected", "icon-opacity-transition", { duration: 220, delay: 0 });
+        map.setPaintProperty("selected", "text-opacity-transition", { duration: 220, delay: 0 });
+        map.setPaintProperty("selected", "icon-opacity", 0); map.setPaintProperty("selected", "text-opacity", 0);
+        selT = setTimeout(() => map.setFilter("selected", ["==", ["get", "id"], ""]), 240);
+      }
+    },
+    setBasemap(id) {
+      for (const k of ["extra-base", "extra-labels"]) { if (map.getLayer(k)) map.removeLayer(k); if (map.getSource(k)) map.removeSource(k); }
+      const b = EXTRA_BASEMAPS[id];
+      for (const l of baseLayerIds) if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", b ? "none" : "visible");
+      if (!b) return;
+      const before = map.getLayer("mask") ? "mask" : undefined; // under the edge veil, lines and pins
+      map.addSource("extra-base", { type: "raster", tiles: b.tiles, tileSize: 256, maxzoom: b.max });
+      map.addLayer({ id: "extra-base", type: "raster", source: "extra-base" }, before);
+      if (b.labels) {
+        map.addSource("extra-labels", { type: "raster", tiles: b.labels, tileSize: 256, maxzoom: b.max });
+        map.addLayer({ id: "extra-labels", type: "raster", source: "extra-labels" }, before);
+      }
+    },
     setMe: (lngLat) => map.getSource("me").setData({ type: "FeatureCollection",
       features: lngLat ? [{ type: "Feature", properties: {}, geometry: { type: "Point", coordinates: lngLat } }] : [] }),
   };

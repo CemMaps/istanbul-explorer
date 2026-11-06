@@ -10,21 +10,22 @@ const SPLASH_PHOTO = "Süleymaniye Mosque in 2025 (54490714777) (cropped).jpg";
 export const SPLASH_CREDIT = { place: "Splash screen", file: SPLASH_PHOTO, author: "Jorge Franganillo", licence: "CC BY 2.0" };
 const fmtDay =(iso) => { const d = new Date(iso + "T12:00:00+03:00"); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
 
-// Copy by phase. "level" drives how celebratory it looks (0 calm → 3 party).
+// Copy by phase. "level" drives how excited it looks (0 calm → 3 party); "plane" on the two flying days.
+// 2026-11-06 (Cem): more exciting as the date nears, a plane on the day we fly.
 export function mood(cfg) {
   const st = tripStatus(cfg.trip.days);
-  const n = cfg.trip.days.length;
+  const days = cfg.trip.days, n = days.length;
   if (st.phase === "after") return { st, level: 0, big: "Teşekkürler", unit: "", line: "Thanks for a great trip. Same time next year?" };
   if (st.phase === "during") {
     const i = st.dayIndex;
-    if (i === 1) return { st, level: 3, big: "Hoş geldiniz!", unit: "", line: "You made it. Day 1 of " + n + ": drop the bags and go and find a sunset." };
-    if (i === n) return { st, level: 2, big: "Last day", unit: "", line: `Make it count. Leave for the airport at ${cfg.trip.days[n - 1].end}.` };
+    if (i === 1) return { st, level: 3, plane: true, big: "Hoş geldiniz!", unit: "", line: `We fly today and land at SAW at ${days[0].start}. Drop the bags and go and find a sunset.` };
+    if (i === n) return { st, level: 2, plane: true, big: "Last day", unit: "", line: `Make it count. Leave for the airport at ${days[n - 1].end}.` };
     return { st, level: 2, big: `Day ${i}`, unit: `of ${n}`, line: "Günaydın! Here's what today looks like." };
   }
   const d = st.daysToGo;
-  if (d === 1) return { st, level: 3, big: "Tomorrow!", unit: "", line: "" };
-  if (d <= 7) return { st, level: 3, big: String(d), unit: "days to go!", line: "" };
-  if (d <= 14) return { st, level: 2, big: String(d), unit: "days to go!", line: "" };
+  if (d === 1) return { st, level: 3, plane: true, big: "Tomorrow!", unit: "", line: `Bags packed? We land at SAW at ${days[0].start}.` };
+  if (d <= 7) return { st, level: 3, big: String(d), unit: "days to go!", line: "Under a week. Comfy shoes: Istanbul is all hills." };
+  if (d <= 14) return { st, level: 2, big: String(d), unit: "days to go!", line: "Two weeks! The forecast starts coming in." };
   if (d <= 30) return { st, level: 1, big: String(d), unit: "days to go!", line: "" };
   return { st, level: 0, big: String(d), unit: "days to go!", line: "" };
 }
@@ -34,7 +35,7 @@ export function countdownCard(cfg) {
   const m = mood(cfg);
   const photo = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(SPLASH_PHOTO)}?width=960`;
   return `<span class="cc-photo" style="background-image:url('${photo}')"></span>
-    <span class="cc-body"><span class="cc-big">${esc(m.big)}</span>${m.unit ? `<span class="cc-unit">${esc(m.unit)}</span>` : ""}
+    <span class="cc-body" data-level="${m.level}">${m.plane ? `<span class="cc-plane" aria-hidden="true">${icon("plane2", 26)}</span>` : ""}<span class="cc-big${/^\d+$/.test(m.big) ? "" : " is-word"}">${esc(m.big)}</span>${m.unit ? `<span class="cc-unit">${esc(m.unit)}</span>` : ""}
       ${countLine(cfg, m)}<span class="cc-more">Days, plans and forecast ${icon("chevronRight", 16)}</span></span>`;
 }
 
@@ -66,9 +67,10 @@ function countLine(cfg, m) {
   if (m.st.phase !== "before" || m.st.daysToGo > 60) return "";
   const n = m.st.daysToGo;
   const ticks = Array.from({ length: n }, (_, i) => `<i${i === 0 ? ' class="now"' : ""}></i>`).join("");
+  const plane = `<span class="sc-plane" aria-hidden="true">${icon("plane2", 14)}</span>`;
   return `<div class="sp-count" role="img" aria-label="${n} days to go, then ${cfg.trip.days.length} days in Istanbul">
     <div class="sc-line">${ticks}<b style="flex:${cfg.trip.days.length}"></b></div>
-    <div class="sc-lbl"><span>Today</span><span>${fmtDay(cfg.trip.days[0].date)}</span></div></div>`;
+    <div class="sc-lbl"><span>${plane}Today</span><span>${fmtDay(cfg.trip.days[0].date)}</span></div></div>`;
 }
 
 // Day pop-up: the main route's stops in order, plus that day's weather and sunset. Nothing else.
@@ -101,7 +103,8 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo, dayPlan }) {
     <div class="sp-scrim" aria-hidden="true"></div>
     <div class="sp-inner">
       <div class="sp-hero">
-        <h1 class="sp-big">${esc(m.big)}</h1>
+        ${m.plane ? `<span class="sp-plane" aria-hidden="true">${icon("plane2", 44)}</span>` : ""}
+        <h1 class="sp-big${/^\d+$/.test(m.big) ? "" : " is-word"}">${esc(m.big)}</h1>
         ${m.unit ? `<div class="sp-unit">${esc(m.unit)}</div>` : ""}
         ${m.line ? `<p class="sp-line">${esc(m.line)}</p>` : ""}
         ${countLine(cfg, m)}

@@ -7,8 +7,13 @@ export function istanbulToday(now = new Date()) {
 }
 const dayDiff = (a, b) => Math.round((Date.parse(b + "T00:00:00Z") - Date.parse(a + "T00:00:00Z")) / 86400000);
 
+// Date preview (2026-11-06): ?today=YYYY-MM-DD or the edit-mode slider pretends it is another day,
+// so the countdown moods can be checked before they happen. Only the countdown uses it.
+let PREVIEW = (() => { const q = new URLSearchParams(location.search).get("today"); return /^\d{4}-\d{2}-\d{2}$/.test(q || "") ? q : null; })();
+export const setPreviewDate = (iso) => { PREVIEW = iso || null; };
+export const previewDate = () => PREVIEW;
 export function tripStatus(days, now = new Date()) {
-  const today = istanbulToday(now);
+  const today = PREVIEW || istanbulToday(now);
   const first = days[0].date, last = days[days.length - 1].date;
   if (today < first) return { phase: "before", daysToGo: dayDiff(today, first) };
   if (today > last) return { phase: "after" };

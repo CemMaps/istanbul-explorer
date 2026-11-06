@@ -9,6 +9,14 @@ const P = {
   label: '<path d="M4 7h16M4 12h10M4 17h13"/>',
   more: '<circle cx="5" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.6" fill="currentColor" stroke="none"/>',
   // Iznik tulip, the classic Ottoman tile motif (used for the neighbourhood-vibe button).
+  // Church: gabled front with a cross; synagogue: the same front with a small Star of David (2026-11-06).
+  church: '<path d="M12 2.5v5M9.8 4.6h4.4"/><path d="M5 21v-8.5L12 7.5l7 5V21"/><path d="M3 21h18"/><path d="M10 21v-3.5a2 2 0 0 1 4 0V21"/>',
+  synagogue: '<path d="M5 21v-9.5L12 6l7 5.5V21"/><path d="M3 21h18"/><path d="M12 10.6l2.3 4H9.7z"/><path d="M12 17.2l-2.3-4h4.6z"/>',
+  // Routes tab: a folded map with a route between two stops.
+  routeMap: '<path d="M3 6.2l5.6-2.4 6.8 2.4L21 3.8v14l-5.6 2.4-6.8-2.4L3 20.2z"/><circle cx="7.6" cy="15" r="1.6" fill="currentColor" stroke="none"/><circle cx="16.4" cy="8.6" r="1.6" fill="currentColor" stroke="none"/><path d="M8.9 13.8c1.4-1.3 1.8-3.3 3.6-3.4 1.4 0 1.6 1.5 2.7-.6" stroke-dasharray="1.6 1.7"/>',
+  // Basemap button: two stacked map sheets.
+  mapStyle: '<path d="M12 3.5l8.5 4.3L12 12 3.5 7.8 12 3.5z"/><path d="M3.5 12.2L12 16.5l8.5-4.3"/><path d="M3.5 16.4L12 20.7l8.5-4.3"/>',
+  plane2: '<path d="M2.5 19.5h19"/><path d="M3.6 13.8l2.3-.6 2 2 3.4-.9-3.3-6.1 1.9-.5 5.3 5.3 4.2-1.1a1.6 1.6 0 0 1 .8 3.1l-14.4 3.9z"/>',
   tulip: '<path d="M12 21v-8"/><path d="M12 13c-3.6 0-5.8-2.7-5.8-7l2.9 1.8L12 3.5l2.9 4.3 2.9-1.8c0 4.3-2.2 7-5.8 7z"/><path d="M12 19c-1.6-2.2-3.8-3.2-6.3-3 .6 2.4 3 3.9 6.3 3.9"/><path d="M12 19c1.6-2.2 3.8-3.2 6.3-3-.6 2.4-3 3.9-6.3 3.9"/>',
   chevDown: '<path d="M6 9l6 6 6-6"/>',
   home: '<path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/><path d="M10 20v-5h4v5"/>',

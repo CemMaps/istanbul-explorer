@@ -1,10 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Maskable (Android): artwork shrunk into the central safe zone. -->
-  <rect width="512" height="512" fill="#14213D"/>
-  <g transform="translate(51.2 30) scale(0.8)">
-    <circle cx="256" cy="292" r="104" fill="#FBF1D6"/>
-    <rect x="96" y="292" width="320" height="140" fill="#14213D"/>
-    <path d="M112 322c24 0 24 14 48 14s24-14 48-14 24 14 48 14 24-14 48-14 24 14 48 14 24-14 48-14" fill="none" stroke="#C4462E" stroke-width="18" stroke-linecap="round"/>
-    <path d="M152 372c20 0 20 12 40 12s20-12 40-12 20 12 40 12 20-12 40-12 20 12 40 12" fill="none" stroke="#1F4FA3" stroke-width="16" stroke-linecap="round"/>
+  <!-- Maskable (Android): the sky fills the canvas, the skyline sits in the safe zone. -->
+  <defs>
+    <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1B2A52"/><stop offset=".38" stop-color="#7A3E63"/><stop offset=".62" stop-color="#E06A45"/><stop offset=".66" stop-color="#F08A4B"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="338" fill="url(#dusk)"/>
+  <g transform="translate(51.2 51) scale(0.8)">
+  <circle cx="256" cy="262" r="92" fill="#F8C766"/>
+  <g fill="#14213D">
+    <path d="M196 268a60 60 0 0 1 120 0z"/><rect x="252" y="190" width="8" height="22" rx="3"/>
+    <rect x="202" y="266" width="108" height="44"/>
+    <path d="M146 304a34 34 0 0 1 68 0zM298 304a34 34 0 0 1 68 0z"/>
+    <rect x="136" y="302" width="240" height="36"/>
+    <path d="M126 112l13 70h-26z"/><rect x="116" y="180" width="20" height="158"/><rect x="110" y="226" width="32" height="9" rx="3"/>
+    <path d="M386 112l13 70h-26z"/><rect x="376" y="180" width="20" height="158"/><rect x="370" y="226" width="32" height="9" rx="3"/>
+  </g>
+  </g>
+  <rect y="321" width="512" height="191" fill="#14213D"/>
+  <g transform="translate(51.2 51) scale(0.8)">
+  <g fill="none" stroke-linecap="round">
+    <path d="M168 372h176" stroke="#F08A4B" stroke-width="14"/>
+    <path d="M200 404h112" stroke="#F8C766" stroke-width="12" opacity=".85"/>
+    <path d="M232 434h48" stroke="#F8C766" stroke-width="10" opacity=".6"/>
+  </g>
   </g>
 </svg>

@@ -2,6 +2,7 @@
 // To give everyone the new look: Export theme.json → replace app/theme.json in the repo → redeploy.
 import { applyTheme } from "./theme.js";
 import { icon } from "./icons.js";
+import { setPreviewDate, previewDate } from "./sky.js";
 
 const LOCAL_KEY = "oit:theme-local";
 const MOCK_KEY = "oit:mockweather";
@@ -21,7 +22,16 @@ export function contrast(a, b) {
 
 export const mockWeatherOn = () => { try { return localStorage.getItem(MOCK_KEY) === "1"; } catch { return false; } };
 
-export async function startEditMode(theme) {
+// Countdown preview: slide through the weeks before the trip (and the trip days) to see each mood.
+const isoPlus = (iso, n) => new Date(Date.parse(iso + "T12:00:00Z") + n * 86400000).toISOString().slice(0, 10);
+const daysBetween = (a, b) => Math.round((Date.parse(b + "T12:00:00Z") - Date.parse(a + "T12:00:00Z")) / 86400000);
+function previewLabel(first, v) {
+  const iso = isoPlus(first, v);
+  const d = new Date(iso + "T12:00:00Z").toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+  return `${d} (${v < 0 ? `${-v} day${v === -1 ? "" : "s"} to go` : v < 4 ? `trip day ${v + 1}` : "after"})`;
+}
+
+export async function startEditMode(theme, cfg) {
   const index = await fetch("themes/index.json").then((r) => r.json());
   const presets = await Promise.all(index.presets.map((id) => fetch(`themes/${id}.json`).then((r) => r.json())));
   let local;
@@ -40,6 +50,8 @@ export async function startEditMode(theme) {
     return p;
   };
   let dirtyMap = false;
+  const first = cfg.trip.days[0].date;
+  const preview = (iso) => { setPreviewDate(iso); window.dispatchEvent(new CustomEvent("oit:preview-date")); };
 
   const panel = document.createElement("aside");
   panel.className = "editor is-collapsed";
@@ -58,6 +70,10 @@ export async function startEditMode(theme) {
       <div class="ed-head"><b>Edit look</b><button class="icon-btn small" data-ed="collapse" aria-label="Close the editor">${icon("close", 20)}</button></div>
       <div class="ed-body">
         <p class="ed-note">Changes save in <b>this browser only</b>. To give everyone the new look: <b>Export theme.json</b>, replace <code>app/theme.json</code> in the repo, then redeploy.</p>
+        <label class="ed-row ed-date">Preview date
+          <input type="range" min="-45" max="4" step="1" value="${previewDate() ? daysBetween(first, previewDate()) : Math.max(-45, Math.min(4, daysBetween(first, new Date().toISOString().slice(0, 10))))}" data-ed="today">
+          <span data-ed-lbl>${previewDate() ? previewLabel(first, daysBetween(first, previewDate())) : "Real today"}</span>
+          ${previewDate() ? `<button class="link-btn" data-ed="realtoday">Back to real today</button>` : ""}</label>
         <label class="ed-row">Preset
           <select data-ed="preset">${presets.map((p) => `<option value="${p.id}" ${p.id === presetId ? "selected" : ""}>${esc(p.label)}</option>`).join("")}</select></label>
         <label class="ed-row">App name <input data-ed="name" value="${esc(t.app.name)}" maxlength="40"></label>
@@ -89,6 +105,7 @@ export async function startEditMode(theme) {
     if (c) { overrides.colors = { ...(overrides.colors || {}), [c]: e.target.value }; applyTheme(merged()); dirtyMap = true; return; }
     const k = e.target.dataset.ed;
     if (k === "name") { overrides.app = { ...(overrides.app || {}), name: e.target.value }; applyTheme(merged()); }
+    if (k === "today") { const v = +e.target.value; preview(isoPlus(first, v)); panel.querySelector("[data-ed-lbl]").textContent = previewLabel(first, v); return; }
     if (k === "radius") { overrides.radius = +e.target.value; e.target.nextElementSibling.textContent = `${e.target.value}px`; applyTheme(merged()); }
   });
   panel.addEventListener("change", (e) => {
@@ -107,6 +124,7 @@ export async function startEditMode(theme) {
     }
   });
   panel.addEventListener("click", (e) => {
+    if (e.target.closest('[data-ed="realtoday"]')) { preview(null); render(); return; }
     const k = e.target.closest("[data-ed]")?.dataset.ed;
     if (k === "collapse") panel.classList.toggle("is-collapsed");
     if (k === "nologo") { overrides.app = { ...(overrides.app || {}), logo: null }; live(); }

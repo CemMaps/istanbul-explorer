@@ -128,12 +128,12 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 @keyframes rise { from { transform: translateY(48px); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes sink { to { transform: translateY(36px); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .place.is-opening, .place.is-closing { animation: none; } }
-.gallery { position: relative; height: 300px; background: color-mix(in srgb, var(--cat, var(--c-primary)) 14%, var(--c-surface-2)); color: color-mix(in srgb, var(--cat, var(--c-primary)) 70%, transparent); }
+.gallery { position: relative; height: calc(300px + env(safe-area-inset-top)); background: color-mix(in srgb, var(--cat, var(--c-primary)) 14%, var(--c-surface-2)); color: color-mix(in srgb, var(--cat, var(--c-primary)) 70%, transparent); }
 .gallery-track { display: flex; height: 100%; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; scroll-snap-stop: always; scrollbar-width: none; touch-action: pan-x pan-y; }
 .gallery-track::-webkit-scrollbar { display: none; }
 .gallery-slide { flex: none; width: 100%; height: 100%; scroll-snap-align: start; display: grid; place-items: center; position: relative; }
 .gallery-slide img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; -webkit-user-drag: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; cursor: zoom-in; }
-.gallery .icon-btn { position: absolute; top: 14px; background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow-sm); }
+.gallery .icon-btn { position: absolute; top: calc(14px + env(safe-area-inset-top)); /* below the iPhone status bar, which blurs what is under it (2026-11-06) */ background: var(--c-surface); color: var(--c-ink); box-shadow: var(--shadow-sm); }
 .gallery .g-back { left: 14px; }
 .gallery .g-heart { right: 14px; color: var(--c-accent); }
 .gallery .g-heart.is-on .ico path { fill: currentColor; }

@@ -645,6 +645,20 @@ $("#base-pop").addEventListener("click", (e) => {
 document.addEventListener("pointerdown", (e) => { if (!$("#base-pop").hidden && !e.target.closest("#base-pop, #btn-base")) toggleBasePop(false); });
 
 $("#btn-home").addEventListener("click", () => MAP.map.flyTo({ center: CFG.map.home, zoom: 15, duration: 800 }));
+// North button (2026-11-06): only while the map is turned; the needle turns with the map; tap = face north.
+$("#btn-north").addEventListener("click", () => MAP.map.easeTo({ bearing: 0, duration: 500 }));
+function wireNorth(map) {
+  const btn = $("#btn-north"), needle = btn.querySelector(".north-needle");
+  const sync = () => {
+    const b = ((map.getBearing() % 360) + 360) % 360;
+    btn.hidden = b < 0.5 || b > 359.5;
+    needle.style.transform = `rotate(${-map.getBearing()}deg)`;
+  };
+  map.on("rotate", sync);
+  map.on("moveend", sync);
+  map.on("rotateend", () => { if (Math.abs(map.getBearing()) < 3 && map.getBearing() !== 0) map.easeTo({ bearing: 0, duration: 200 }); }); // snap the last few degrees
+  sync();
+}
 $("#btn-near").addEventListener("click", () => {
   const b = $("#btn-near");
   if (S.near) { S.near = null; b.classList.remove("is-on"); MAP.setMe(null); renderList(); return; }
@@ -1049,6 +1063,7 @@ async function buildMap(camera) {
     onStop: (st) => { if (!S.here) toast(`${st.name} · ${{ metro: "Metro station", tram: "Tram stop", funicular: "Funicular", ferry: "Ferry pier", rail: "Train station" }[st.mode] || "Stop"}${st.lines ? ` (${[].concat(st.lines).join(", ")})` : ""}`); } });
   if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
   if (camera) MAP.map.jumpTo(camera);
+  wireNorth(MAP.map);
   MAP.map.on("moveend", renderList);
   // Small spinner by the list title while the map moves or tiles load, so the list never looks stuck (2026-11-06).
   let busyT;

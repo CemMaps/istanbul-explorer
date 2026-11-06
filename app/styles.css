@@ -718,3 +718,10 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .list-busy { width: 13px; height: 13px; border-width: 2px; }
 /* "Visitor" on the name prompt: quiet underlined text under the four names. */
 .name-visitor { display: block; margin: 14px auto 2px; min-height: var(--tap); padding: 0 16px; color: var(--c-ink-2); font-weight: 600; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; background: none; }
+
+/* North button (2026-11-06): appears only while the map is rotated */
+.north-btn[hidden] { display: none; }
+.north-btn { animation: fade .2s var(--ease); }
+.north-needle { transition: transform .05s linear; }
+.north-needle .nn-n { fill: var(--c-accent); }
+.north-needle .nn-s { fill: none; stroke: var(--c-ink-2); stroke-width: 1.6; stroke-linejoin: round; }

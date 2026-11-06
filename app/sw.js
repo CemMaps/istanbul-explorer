@@ -1,7 +1,7 @@
 ﻿// Offline support: the app shell, data and pinned CDN libraries are cached on first visit.
 // Same-origin files: network first (so updates arrive), cache as fallback.
 // CDN libs, fonts, Commons photos and map tiles: cache first, filled as you browse (tiles capped).
-const VERSION = "oit-v30";
+const VERSION = "oit-v31";
 const SHELL = [
   "./", "index.html", "styles.css", "app.js", "map.js", "theme.js", "icons.js", "store.js", "sky.js", "routes.js", "share.js", "splash.js",
   "config.json", "theme.json", "manifest.webmanifest", "icons/favicon-32.png", "icons/favicon-64.png", "themes/index.json",

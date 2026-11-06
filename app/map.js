@@ -122,10 +122,12 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     center: config.map.center, zoom: config.map.zoom,
     minZoom: config.map.minZoom, maxZoom: config.map.maxZoom,
     attributionControl: false, // credit shown as a small line on the map + full credits screen (see app.js)
-    pitchWithRotate: false, dragRotate: false,
+    // 2026-11-06 (Cem): no 3D tilt (glitchy, and it kept the edge blur redrawing); rotation is allowed,
+    // with a north button that shows only while the map is turned (app.js).
+    maxPitch: 0, pitchWithRotate: false, touchPitch: false, dragRotate: true,
     fadeDuration: 120, // short fade so collisions don't pop while zooming (selected pin ignores placement, so no blink)
   });
-  map.touchZoomRotate.disableRotation();
+  map.keyboard.disableRotation?.();
   await new Promise((r) => map.on("load", r));
   const baseLayerIds = map.getStyle().layers.map((l) => l.id); // the vector basemap, hidden under a raster basemap
 

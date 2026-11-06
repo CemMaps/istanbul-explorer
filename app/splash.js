@@ -70,7 +70,7 @@ function countLine(cfg, m) {
   const plane = `<span class="sc-plane" aria-hidden="true">${icon("plane2", 14)}</span>`;
   return `<div class="sp-count" role="img" aria-label="${n} days to go, then ${cfg.trip.days.length} days in Istanbul">
     <div class="sc-line">${ticks}<b style="flex:${cfg.trip.days.length}"></b></div>
-    <div class="sc-lbl"><span>${plane}Today</span><span>${fmtDay(cfg.trip.days[0].date)}</span></div></div>`;
+    <div class="sc-lbl"><span>Today</span><span>${plane}${fmtDay(cfg.trip.days[0].date)}</span></div></div>`;
 }
 
 // Day pop-up: the main route's stops in order, plus that day's weather and sunset. Nothing else.

@@ -14,7 +14,7 @@ const P = {
   church: '<path d="M12 2.5v5M9.8 4.6h4.4"/><path d="M5 21v-8.5L12 7.5l7 5V21"/><path d="M3 21h18"/><path d="M10 21v-3.5a2 2 0 0 1 4 0V21"/>',
   synagogue: '<path d="M5 21v-9.5L12 6l7 5.5V21"/><path d="M3 21h18"/><path d="M12 10.6l2.3 4H9.7z"/><path d="M12 17.2l-2.3-4h4.6z"/>',
   // Routes tab: a plain route, four stops joined (2026-11-06, Cem's reference).
-  routeMap: '<path d="M4.5 7l6 9 6-5 3.5 6.5" stroke-width="2.2"/><circle cx="4.5" cy="7" r="2.6" fill="currentColor" stroke="none"/><circle cx="10.5" cy="16" r="2.6" fill="currentColor" stroke="none"/><circle cx="16.5" cy="11" r="2.6" fill="currentColor" stroke="none"/><circle cx="20" cy="17.5" r="2.6" fill="currentColor" stroke="none"/>',
+  routeMap: '<path d="M4.5 7l6 9 6-5 3.5 6.5"/><circle cx="4.5" cy="7" r="2.2" fill="currentColor" stroke="none"/><circle cx="10.5" cy="16" r="2.2" fill="currentColor" stroke="none"/><circle cx="16.5" cy="11" r="2.2" fill="currentColor" stroke="none"/><circle cx="20" cy="17.5" r="2.2" fill="currentColor" stroke="none"/>',
   // Map style button: a folded paper map (layers icon read as "layers").
   mapStyle: '<path d="M3 6.2l5.6-2.4 6.8 2.4L21 3.8v14l-5.6 2.4-6.8-2.4L3 20.2z"/><path d="M8.6 3.8v14M15.4 6.2v14"/>',
   plane2: '<path d="M2.5 19.5h19"/><path d="M3.6 13.8l2.3-.6 2 2 3.4-.9-3.3-6.1 1.9-.5 5.3 5.3 4.2-1.1a1.6 1.6 0 0 1 .8 3.1l-14.4 3.9z"/>',

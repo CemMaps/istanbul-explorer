@@ -204,9 +204,9 @@ function inViewPlaces() {
 }
 function renderList() {
   const items = inViewPlaces();
-  // Zoomed out to the whole city, "in view" means "in Istanbul": say so, and nudge to zoom in (2026-11-06).
+  // Always "in view" (2026-11-06, Cem: "Top picks in Istanbul" read as inconsistent). Zoomed right out, nudge to zoom in.
   const city = MAP.map.getZoom() < 11.8;
-  $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${(({ title, label }) => title || label)(CFG.chips.find((c) => c.id === S.chip))} ${city ? "in Istanbul" : "in view"}` : city ? "Top picks in Istanbul" : "Top picks in view";
+  $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${(({ title, label }) => title || label)(CFG.chips.find((c) => c.id === S.chip))} in view` : city ? "Zoom in for top picks" : "Top picks in view";
   const sub = (x) => `${esc(x.p.area)}${S.near ? ` · ${fmtDist(x.d)}` : ""}`;
   $("#cards").innerHTML = items.length
     ? items.slice(0, 12).map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p)}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${sub(x)}</div></button>`).join("")
@@ -597,9 +597,9 @@ function renderInstall() {
 // Four maps: the theme's own map, a detailed street map, satellite with labels, topographic. Remembered per phone.
 const BASES = [
   { id: "default", label: "Auto", hint: "Matches app theme" },
-  { id: "streets", label: "Streets", hint: "More detail" },
-  { id: "satellite", label: "Satellite", hint: "With labels" },
-  { id: "hills", label: "Hills", hint: "Shows the slopes" },
+  { id: "streets", label: "Streets", hint: "More detailed" },
+  { id: "satellite", label: "Satellite", hint: "Imagery with labels" },
+  { id: "hills", label: "Topography", hint: "Hills and mountains" },
 ];
 const BASE_KEY = "oit:basemap";
 const getBase = () => { try { const b = localStorage.getItem(BASE_KEY); return EXTRA_BASEMAPS[b] ? b : "default"; } catch { return "default"; } };

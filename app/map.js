@@ -320,7 +320,9 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     // Non-matching places disappear completely (Cem, 2026-11-05: hide, don't dim).
     showAllTiers(on) {
       for (const [id, z] of Object.entries(tierZoom)) {
-        map.setLayerZoomRange(id, on ? 0 : z, 24);
+        // Food icons stay off below z14 even when filtering: thousands of collided icons at city zoom form an even
+        // lattice that looks like gridded data (2026-11-06). The dots show the real pattern there.
+        map.setLayerZoomRange(id, on ? (id === "pins-local" ? Math.min(14, z) : 0) : z, 24);
         map.setFilter(id, on ? ["all", baseFilter[id], ["!", ["get", "dim"]]] : baseFilter[id]);
       }
       for (const id of dotLayers) {

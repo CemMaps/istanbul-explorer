@@ -1,28 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Maskable (Android): the sky fills the canvas, the skyline sits in the safe zone. -->
+  <!-- Maskable (Android): same pin, shrunk into the central safe zone. -->
+  <rect width="512" height="512" fill="#14213D"/>
+  <!-- contour lines: a topographic map behind the pin -->
+  <g fill="none" stroke="#24365F" stroke-width="7" stroke-linecap="round">
+    <path d="M-20 120c60-30 110 10 160-20s70-90 60-130"/><path d="M-20 175c80-34 150 14 205-26s95-110 85-170"/>
+    <path d="M300 540c10-60 60-80 110-90s90-50 120-110"/><path d="M360 540c6-40 40-60 80-66s60-30 90-70"/>
+    <path d="M-20 400c50-20 80 10 110 40s60 60 70 120"/>
+  </g>
+  <g transform="translate(64 50) scale(0.75)">
   <defs>
-    <linearGradient id="dusk" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1B2A52"/><stop offset=".38" stop-color="#7A3E63"/><stop offset=".62" stop-color="#E06A45"/><stop offset=".66" stop-color="#F08A4B"/>
+    <linearGradient id="duskm" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#1B2A52"/><stop offset=".45" stop-color="#7A3E63"/><stop offset=".78" stop-color="#E06A45"/><stop offset="1" stop-color="#F08A4B"/>
     </linearGradient>
+    <clipPath id="pinm"><path d="M256 452L139.6 308.5A150 150 0 1 1 372.4 308.5Z"/></clipPath>
   </defs>
-  <rect width="512" height="338" fill="url(#dusk)"/>
-  <g transform="translate(51.2 51) scale(0.8)">
-  <circle cx="256" cy="262" r="92" fill="#F8C766"/>
-  <g fill="#14213D">
-    <path d="M196 268a60 60 0 0 1 120 0z"/><rect x="252" y="190" width="8" height="22" rx="3"/>
-    <rect x="202" y="266" width="108" height="44"/>
-    <path d="M146 304a34 34 0 0 1 68 0zM298 304a34 34 0 0 1 68 0z"/>
-    <rect x="136" y="302" width="240" height="36"/>
-    <path d="M126 112l13 70h-26z"/><rect x="116" y="180" width="20" height="158"/><rect x="110" y="226" width="32" height="9" rx="3"/>
-    <path d="M386 112l13 70h-26z"/><rect x="376" y="180" width="20" height="158"/><rect x="370" y="226" width="32" height="9" rx="3"/>
+  <ellipse cx="256" cy="458" rx="54" ry="12" fill="#F6C25B" opacity=".45"/>
+  <g clip-path="url(#pinm)">
+    <rect x="100" y="60" width="312" height="262" fill="url(#duskm)"/>
+    <circle cx="256" cy="262" r="64" fill="#F8C766"/>
+    <g fill="#14213D">
+      <path d="M204 270a52 44 0 0 1 104 0z"/>
+      <rect x="254.5" y="212" width="3" height="16"/><path d="M262 205a7 7 0 1 1-6-9 5.6 5.6 0 1 0 6 9z"/>
+      <rect x="208" y="268" width="96" height="34"/>
+      <path d="M152 300a30 24 0 0 1 60 0zM300 300a30 24 0 0 1 60 0z"/>
+      <path d="M188 290a14 12 0 0 1 28 0zM296 290a14 12 0 0 1 28 0z"/>
+      <rect x="140" y="296" width="232" height="30"/>
+      <path d="M150 116l7 38h-14z"/><rect x="144" y="152" width="12" height="174"/><rect x="139" y="196" width="22" height="6" rx="2"/><rect x="140" y="240" width="20" height="6" rx="2"/>
+      <path d="M362 116l7 38h-14z"/><rect x="356" y="152" width="12" height="174"/><rect x="351" y="196" width="22" height="6" rx="2"/><rect x="352" y="240" width="20" height="6" rx="2"/>
+    </g>
+    <rect x="100" y="322" width="312" height="140" fill="#1F4FA3"/>
+    <path d="M150 350c40 22 80 26 106 18s60-14 106 6" fill="none" stroke="#FBF1D6" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 13" opacity=".9"/>
   </g>
-  </g>
-  <rect y="321" width="512" height="191" fill="#14213D"/>
-  <g transform="translate(51.2 51) scale(0.8)">
-  <g fill="none" stroke-linecap="round">
-    <path d="M168 372h176" stroke="#F08A4B" stroke-width="14"/>
-    <path d="M200 404h112" stroke="#F8C766" stroke-width="12" opacity=".85"/>
-    <path d="M232 434h48" stroke="#F8C766" stroke-width="10" opacity=".6"/>
-  </g>
+  <path d="M256 452L139.6 308.5A150 150 0 1 1 372.4 308.5Z" fill="none" stroke="#FBF1D6" stroke-width="12" stroke-linejoin="round"/>
   </g>
 </svg>

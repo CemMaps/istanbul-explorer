@@ -1,6 +1,6 @@
 {
   "id": "bosphorus-night",
-  "label": "Midnight",
+  "label": "Midnight", "hint": "Dark",
   "app": {
     "name": "Istanbul Explorer",
     "short": "Istanbul",

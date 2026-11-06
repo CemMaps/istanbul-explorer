@@ -4,7 +4,7 @@ import { createMap } from "./map.js";
 import { store } from "./store.js";
 import { tripStatus, sunTimes, forecast, fmtTime, istanbulToday, istMinutes } from "./sky.js";
 import { order, legMode, legsGeometry } from "./routes.js";
-import { renderSplash, updateSplashForecast, badgeText } from "./splash.js";
+import { renderSplash, updateSplashForecast, badgeText, countdownCard, SPLASH_CREDIT } from "./splash.js";
 import { indexCodes, importFromHash, shareMyPicks, people, mergeIntoMine, removePerson, fmtAsOf } from "./share.js";
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -50,8 +50,9 @@ function matchesFilter(p) {
   if (S.query) {
     // Search covers names (English + Turkish), district + neighbourhood, type (mosque, church, museum…)
     // and the short description, so "Byzantine", "Sinan" or "Ottoman palace" work too.
-    p._hay ||= norm([p.name, p.name_tr, ...(p.aka || []), p.area, p.mahalle, p.kind ? "" : p.category, typeLabel(p), p.summary || p.blurb, ...(p.dishes || [])].join(" "));
-    if (!norm(S.query).split(/\s+/).every((w) => p._hay.includes(w))) return false;
+    // plus dishes and the area's vibe and lifestyle words ("bohemian", "cosmopolitan"); see hayOf().
+    const hay = hayOf(p);
+    if (!norm(S.query).split(/\s+/).every((w) => hay.includes(w))) return false;
   }
   return true;
 }
@@ -112,18 +113,76 @@ $("#chips").addEventListener("click", (e) => {
   S.chip = S.chip === b.dataset.chip ? "all" : b.dataset.chip;
   refreshPlaces({ fit: true });
 });
-let searchT;
-$("#search").addEventListener("input", (e) => {
-  clearTimeout(searchT);
-  searchT = setTimeout(() => {
-    S.query = e.target.value.trim();
-    $("#search-clear").hidden = !S.query;
-    refreshPlaces({ fit: !!S.query });
-  }, 220);
+// Search (2026-11-06): typing only shows suggestions (the map stays put); Enter, or "Search for …", filters the map.
+// An empty, focused box offers a few example searches.
+const EXAMPLES = ["Meyhane", "Fish", "Breakfast", "Bohemian", "Byzantine", "Sinan", "Ottoman palace", "Baklava"];
+const SUGGEST_MAX = 6;
+function hayOf(p) {
+  if (!p._hay) {
+    const vibe = (id) => CFG.vibe.classes.find((c) => c.id === id);
+    const life = CFG.vibe.lifestyles.find((l) => l.id === p.lifestyle);
+    p._hay = norm([p.name, p.name_tr, ...(p.aka || []), p.area, p.mahalle, p.kind ? "" : p.category, typeLabel(p), p.summary || p.blurb,
+      ...(p.dishes || []), p.veggie_friendly ? "vegetarian veggie" : "",
+      vibe(p.character?.primary)?.label, vibe(p.character?.secondary)?.label, life?.label].filter(Boolean).join(" "));
+  }
+  return p._hay;
+}
+function queryMatches(q) {
+  const words = norm(q).split(/\s+/).filter(Boolean);
+  return words.length ? PLACES.features.filter((f) => words.every((w) => hayOf(f.properties).includes(w))) : [];
+}
+function renderSuggest() {
+  const box = $("#suggest");
+  const q = $("#search").value.trim();
+  if (document.activeElement !== $("#search")) { box.hidden = true; return; }
+  if (!q) {
+    box.innerHTML = `<p class="sg-title">Try</p><div class="sg-chips">${EXAMPLES.map((x) => `<button class="sg-chip" data-sg-q="${esc(x)}">${esc(x)}</button>`).join("")}</div>`;
+    box.hidden = false;
+    return;
+  }
+  const n = norm(q);
+  const m = queryMatches(q);
+  // Names that start with the text first, then the best-known.
+  const top = m.map((f) => f.properties)
+    .sort((a, b) => (norm(b.name).startsWith(n) - norm(a.name).startsWith(n)) || tierRank[a.tier] - tierRank[b.tier] || b.score - a.score)
+    .slice(0, SUGGEST_MAX);
+  box.innerHTML = `<button class="sg-row sg-all" data-sg-q="${esc(q)}">${icon("search", 18)}<span>Search for “${esc(q)}”<small>${m.length ? `${m.length} place${m.length > 1 ? "s" : ""} on the map` : "No matches yet"}</small></span></button>`
+    + top.map((p) => `<button class="sg-row" data-sg-open="${esc(p.id)}"><span class="sg-ico" style="--cat: var(${catVar(p.category)})">${icon(catCfg(p.category).icon, 16)}</span><span>${esc(p.name)}<small>${esc(typeLabel(p))} · ${esc(p.mahalle || p.area || "")}</small></span></button>`).join("");
+  box.hidden = false;
+}
+function runSearch(q) {
+  $("#search").value = q;
+  S.query = q.trim();
+  $("#search-clear").hidden = !S.query;
+  $("#suggest").hidden = true;
+  $("#search").blur();
+  refreshPlaces({ fit: !!S.query });
+}
+$("#search").addEventListener("input", () => {
+  $("#search-clear").hidden = !$("#search").value;
+  renderSuggest();
 });
-$("#search").addEventListener("keydown", (e) => { if (e.key === "Enter") e.target.blur(); });
+$("#search").addEventListener("focus", renderSuggest);
+$("#search").addEventListener("blur", () => setTimeout(() => { if (document.activeElement !== $("#search")) $("#suggest").hidden = true; }, 150));
+$("#search").addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); runSearch($("#search").value); }
+  if (e.key === "Escape") { $("#suggest").hidden = true; $("#search").blur(); }
+});
+// pointerdown (not click) so the tap lands before the input's blur hides the list
+$("#suggest").addEventListener("pointerdown", (e) => {
+  const q = e.target.closest("[data-sg-q]");
+  const o = e.target.closest("[data-sg-open]");
+  if (!q && !o) return;
+  e.preventDefault();
+  if (q) return runSearch(q.dataset.sgQ);
+  $("#suggest").hidden = true;
+  $("#search").blur();
+  const id = o.dataset.sgOpen;
+  MAP.map.jumpTo({ center: BYID[id].geometry.coordinates, zoom: Math.max(MAP.map.getZoom(), 15.5) });
+  openPlace(id);
+});
 $("#search-clear").addEventListener("click", () => {
-  $("#search").value = ""; S.query = ""; $("#search-clear").hidden = true; refreshPlaces();
+  $("#search").value = ""; S.query = ""; $("#search-clear").hidden = true; $("#suggest").hidden = true; refreshPlaces();
 });
 
 // ---------- list in view ----------
@@ -140,7 +199,9 @@ function inViewPlaces() {
 }
 function renderList() {
   const items = inViewPlaces();
-  $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${CFG.chips.find((c) => c.id === S.chip).label} in view` : "Top picks in view";
+  // Zoomed out to the whole city, "in view" means "in Istanbul": say so, and nudge to zoom in (2026-11-06).
+  const city = MAP.map.getZoom() < 11.8;
+  $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${CFG.chips.find((c) => c.id === S.chip).label} in view` : city ? "Top picks in Istanbul" : "Top picks in view";
   const sub = (x) => `${esc(x.p.area)}${S.near ? ` · ${fmtDist(x.d)}` : ""}`;
   $("#cards").innerHTML = items.length
     ? items.slice(0, 12).map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p)}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${sub(x)}</div></button>`).join("")
@@ -149,7 +210,8 @@ function renderList() {
       <div class="row-txt"><div class="row-name">${esc(x.p.name)}</div><div class="row-sub">${esc(typeLabel(x.p))} · ${sub(x)}</div></div></button>`).join("")
     || `<p class="empty">Nothing in view.</p>`;
   $("#sheet-toggle").textContent = S.sheet === "open" ? "Show map" : `See all ${items.length}`;
-  $("#sheet-bar-txt").textContent = `${items.length} ${items.length === 1 ? "place" : "places"} in view`;
+  $("#sheet-bar-txt").textContent = MAP.map.getZoom() < 11.8 && !filterActive() && !S.near
+    ? `${items.length} places · zoom in to explore an area` : `${items.length} ${items.length === 1 ? "place" : "places"} in view`;
 }
 
 // ---------- bottom sheet: closed / peek / open ----------
@@ -343,9 +405,12 @@ function toast(msg, undo) {
 function openDialog(html, { dismissable = true } = {}) {
   const d = $("#dialog");
   $("#dialog-card").innerHTML = html;
+  $("#dialog-card").onclick = null; // a dialog that needs clicks sets its own after opening
   d.hidden = false;
   d.dataset.dismissable = dismissable;
-  $("#dialog-card").querySelector("button, input")?.focus();
+  // Focus a text field if there is one; otherwise the card itself (focusing a button from code draws its focus ring).
+  const field = $("#dialog-card").querySelector("input[autofocus]"); // no keyboard popping up for menus with a rename box
+  if (field) field.focus(); else { $("#dialog-card").tabIndex = -1; $("#dialog-card").focus({ preventScroll: true }); }
 }
 function closeDialog() { if ($("#dialog").dataset.dismissable !== "false") { $("#dialog").hidden = true; $("#dialog").classList.remove("is-sheet"); } }
 $("#dialog").addEventListener("click", (e) => { if (e.target.id === "dialog") closeDialog(); });
@@ -361,6 +426,7 @@ function askName() {
 function showCredits() {
   const rows = PLACES.features.filter((f) => f.properties.photos?.length)
     .flatMap((f) => f.properties.photos.map((ph) => ({ place: f.properties.name, ...ph })));
+  rows.unshift(SPLASH_CREDIT);
   openDialog(`<h2>Credits</h2>
     <p>Photos from <b>Wikimedia Commons</b>, used under their licences. Place data from <b>Wikidata</b> (CC0); short descriptions from <b>Wikipedia</b> (CC BY-SA 4.0).
     Map data © <b>OpenStreetMap</b> contributors (ODbL), basemap © <b>CARTO</b>. Weather by <b>Open-Meteo</b> (CC BY 4.0).</p>
@@ -372,7 +438,7 @@ $("#open-credits").addEventListener("click", showCredits);
 
 // ---------- trip badge + splash ----------
 function renderBadge() {
-  $("#splash-sub").textContent = `${badgeText(CFG)} · weather and sunsets`;
+  $("#open-splash").innerHTML = countdownCard(CFG);
 }
 // The day's main route as an ordered list of names (for the splash day pop-up).
 function dayPlan(day) {
@@ -396,9 +462,11 @@ async function renderThemePicker() {
   const index = await fetch("themes/index.json").then((r) => r.json());
   const presets = await Promise.all(index.presets.map((id) => fetch(`themes/${id}.json`).then((r) => r.json())));
   const cur = THEME.id;
-  box.innerHTML = presets.map((p) => `<button role="radio" aria-checked="${p.id === cur}" data-preset="${p.id}" class="tp"
-      style="--tp-a:${p.colors.navy};--tp-b:${p.swatch || p.colors.primary};--tp-c:${p.colors.accent};--tp-d:${p.colors["map-land"]}">
-      <span class="tp-sw"><i></i><i></i><i></i></span><span class="tp-name">${esc(p.label)}</span></button>`).join("");
+  // Each swatch is a tiny preview of the app in that theme: its background, the map colour, a button
+  // and the accent, so "Iznik" no longer suggests the whole app turns blue (2026-11-06).
+  box.innerHTML = presets.map((p) => `<button role="radio" aria-checked="${p.id === cur}" data-preset="${p.id}" class="tp" aria-label="${esc(p.label)}: ${esc(p.hint || "")}"
+      style="--tp-s:${p.colors.surface};--tp-m:${p.colors["map-land"]};--tp-p:${p.colors.primary};--tp-c:${p.colors.accent};--tp-n:${p.colors.navy}">
+      <span class="tp-sw"><i></i><i></i><i></i></span><span class="tp-name">${esc(p.label)}</span><span class="tp-hint">${esc(p.hint || "")}</span></button>`).join("");
   box.dataset.ready = "1";
   box.addEventListener("click", (e) => {
     const b = e.target.closest("[data-preset]");
@@ -644,7 +712,7 @@ function renderSaved() {
   let top = "", ids = [], badgeFor = () => "";
   if (S.savedTab === "mine") {
     ids = me.hearts.filter((id) => BYID[id]);
-    // Golden Horn at sunset (same Commons photo as the splash; credited on the credits list).
+    // Golden Horn at sunset (Commons; credited on the credits list via places.geojson).
     top = `<section class="share-card" style="--share-photo: url('${photoUrl("Golden Horn Metro Bridge at sunset.jpg", 960)}')">
         <h2>Share your saved places</h2>
         <button class="btn-share" id="share-btn">${icon("share", 18)} Share${ids.length ? ` · ${ids.length}` : ""}</button>
@@ -737,7 +805,7 @@ async function renderPlan() {
   $("#plan-tabs").innerHTML = CFG.trip.days.map((d) => {
     const n = dayRoutes(d.id).reduce((s, r) => s + r.ids.length, 0);
     const dt = new Date(d.date + "T12:00:00");
-    return `<button class="seg" role="tab" data-plan="${d.id}" aria-selected="${d.id === S.planDay}" aria-label="${d.label}${n ? `, ${n} stops` : ""}">
+    return `<button class="dseg" role="tab" data-plan="${d.id}" aria-selected="${d.id === S.planDay}" aria-label="${d.label}${n ? `, ${n} stops` : ""}">
       <b>${d.label.slice(0, 3)}</b><small>${dt.getDate()} Nov</small>${n ? "<i></i>" : ""}</button>`;
   }).join("");
   const d = dayCfg(S.planDay);
@@ -763,10 +831,9 @@ async function renderPlan() {
   $("#route-head").innerHTML = `
     <div class="rh-txt">
       <h1 class="rh-title">${esc(d.label)}</h1>
-      <label class="rh-sub">${stopsTxt} · from <span class="rh-start">${esc(startName)}${mine ? icon("chevDown", 14) : ""}</span>
-        <select id="route-start" ${mine ? "" : "disabled"} aria-label="Where this route starts">${startOpts.map(([k, l]) => `<option value="${esc(k)}" ${(r.start || "home") === k ? "selected" : ""}>${esc(l[0].toUpperCase() + l.slice(1))}</option>`).join("")}</select></label>
+      <div class="rh-sub">${stopsTxt} · from ${mine ? `<button class="rh-start" id="route-start" aria-label="Start from ${esc(startName)}. Change">${esc(startName)}${icon("chevDown", 14)}</button>` : `<span class="rh-start">${esc(startName)}</span>`}</div>
     </div>
-    ${seq.length ? `<button class="rh-map ${r.onMap ? "is-on" : ""}" id="route-onmap" aria-pressed="${!!r.onMap}">${icon(r.onMap ? "check" : "pin", 16)}${r.onMap ? "On map" : "Show on map"}</button>` : ""}
+    ${seq.length ? `<button class="rh-map ${r.onMap ? "is-on" : ""}" id="route-onmap" aria-pressed="${!!r.onMap}">${icon(r.onMap ? "eyeOff" : "pin", 16)}${r.onMap ? "Hide from map" : "Show on map"}</button>` : ""}
     ${mine ? `<button class="icon-btn small rh-more" id="route-more" aria-label="Route options">${icon("more", 20)}</button>` : ""}`;
 
   const legRow = (a, b) => { const m = legMode(a, b, STOPS.features);
@@ -785,7 +852,7 @@ async function renderPlan() {
   }).join("");
   $("#plan-body").style.setProperty("--rc", rcVar(r));
   $("#plan-body").innerHTML = `${mine ? "" : `<p class="readonly-note">${esc(S.planWho)}'s route, from their link of ${fmtAsOf(all[S.planWho].asOf)}. Read-only.</p>`}
-    ${startRow}${body}${seq.length ? "" : `<p class="empty rh-empty">${mine ? `Open a place and tap ${esc(d.label)}, or add one of your saved places below. We put them in a sensible order.` : "Nothing here yet."}</p>`}`;
+    ${startRow}${body}${seq.length ? "" : `<p class="empty rh-empty">${mine ? `Open a place and tap ${esc(d.label)}, or add one of your saved places below. They'll be put in a sensible order.` : "Nothing here yet."}</p>`}`;
 
   // Saved places that aren't on any route yet: one tap adds them to this route.
   const free = mine ? store.get().hearts.filter((id) => BYID[id] && !store.dayOf(id)) : [];
@@ -809,12 +876,24 @@ async function showRouteOnExplore(r) {
 
 $("#plan-tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-plan]"); if (b) { S.planDay = b.dataset.plan; S.planRoute = null; renderPlan(); } });
 $("#plan-who").addEventListener("change", (e) => { S.planWho = e.target.value; S.planRoute = null; renderPlan(); });
-$("#screen-plan").addEventListener("change", (e) => {
-  if (e.target.id === "route-start") { store.setStart(S.planRoute, e.target.value); renderPlan(); renderMapRoutes(); }
-});
 $("#screen-plan").addEventListener("click", (e) => {
   const chip = e.target.closest("[data-route]");
   if (chip) { if (S.planWho === "me") store.setActive(S.planDay, chip.dataset.route); S.planRoute = chip.dataset.route; return renderPlan(); }
+  // Start picker: an in-app list (not the phone's native dropdown), matching the rest of the app.
+  if (e.target.closest("#route-start")) {
+    const r = store.route(S.planRoute);
+    const opts = [["home", "Our flat", "Cihangir"], ...r.ids.filter((id) => BYID[id]).map((id) => [id, BYID[id].properties.name, BYID[id].properties.mahalle || BYID[id].properties.area])];
+    const cur = r.start || "home";
+    openDialog(`<h2>Start from</h2><div class="menu-list">${opts.map(([k, l, sub]) =>
+      `<button class="menu-item ${k === cur ? "is-cur" : ""}" data-start="${esc(k)}">${icon(k === "home" ? "home" : "pin", 20)}<span>${esc(l)}<small>${esc(sub || "")}</small></span>${k === cur ? icon("check", 20) : ""}</button>`).join("")}</div>`);
+    $("#dialog-card").onclick = (ev) => {
+      const b = ev.target.closest("[data-start]");
+      if (!b) return;
+      $("#dialog").hidden = true; $("#dialog-card").onclick = null;
+      store.setStart(r.id, b.dataset.start); renderPlan(); renderMapRoutes();
+    };
+    return;
+  }
   if (e.target.closest("#route-onmap")) {
     const r = store.route(S.planRoute);
     if (!r) return;
@@ -890,8 +969,8 @@ async function switchTheme() {
   CFG = await get("config.json");
   // Splash once per app open (not when arriving from a shared link or a place link), shown before anything else.
   const linkHash = /(^#|&)(from|z|place)=/.test(location.hash);
-  let seen = false; try { seen = sessionStorage.getItem("oit:splash") === "1"; sessionStorage.setItem("oit:splash", "1"); } catch { /* ignore */ }
-  const withSplash = !linkHash && !seen && params.get("splash") !== "0";
+  // Every open, refreshes included (2026-11-06, Cem); not for shared or place links, or ?splash=0.
+  const withSplash = !linkHash && params.get("splash") !== "0";
   let splashGone = !withSplash, mapReady = false;
   const afterSplash = () => { splashGone = true; if (mapReady && !store.get().name) askName(); };
   if (withSplash) showSplash(afterSplash);

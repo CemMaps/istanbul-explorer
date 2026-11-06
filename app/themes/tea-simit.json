@@ -1,6 +1,6 @@
 {
   "id": "tea-simit",
-  "label": "Simit",
+  "label": "Simit", "hint": "Warm cream",
   "app": {
     "name": "Istanbul Explorer",
     "short": "Istanbul",

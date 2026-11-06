@@ -1,6 +1,6 @@
 {
   "id": "tile-white",
-  "label": "Tile",
+  "label": "Tile", "hint": "Light, mono",
   "app": {
     "name": "Istanbul Explorer",
     "short": "Istanbul",
@@ -21,7 +21,7 @@
     "ink-2": "#5E5A55",
     "ink-inverse": "#FFFFFF",
     "navy": "#111418",
-    "primary": "#1F4FA3",
+    "primary": "#111418",
     "primary-ink": "#FFFFFF",
     "accent": "#C9402A",
     "accent-ink": "#FFFFFF",

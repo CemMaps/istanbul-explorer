@@ -1,6 +1,6 @@
 {
   "id": "gul",
-  "label": "Rose",
+  "label": "Rose", "hint": "Light, rose",
   "app": {
     "name": "Istanbul Explorer",
     "short": "Istanbul",

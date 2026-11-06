@@ -5,8 +5,9 @@ import { tripStatus, sunTimes, fmtTime } from "./sky.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-// Süleymaniye from above, the Golden Horn and Galata behind it, on a sunny day (Commons; credited via places.geojson).
-const SPLASH_PHOTO = "SüleymaniyeMosqueIstanbul (cropped).jpg";
+// Süleymaniye at sunset under a pink sky (Commons, Jorge Franganillo, CC BY 2.0; listed on the Credits screen).
+const SPLASH_PHOTO = "Süleymaniye Mosque in 2025 (54490714777) (cropped).jpg";
+export const SPLASH_CREDIT = { place: "Splash screen", file: SPLASH_PHOTO, author: "Jorge Franganillo", licence: "CC BY 2.0" };
 const fmtDay =(iso) => { const d = new Date(iso + "T12:00:00+03:00"); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
 
 // Copy by phase. "level" drives how celebratory it looks (0 calm → 3 party).
@@ -28,24 +29,20 @@ export function mood(cfg) {
   return { st, level: 0, big: String(d), unit: "days to go!", line: "" };
 }
 
+// Countdown card for the More tab: the big number, the countdown line, sunset photo behind.
+export function countdownCard(cfg) {
+  const m = mood(cfg);
+  const photo = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(SPLASH_PHOTO)}?width=960`;
+  return `<span class="cc-photo" style="background-image:url('${photo}')"></span>
+    <span class="cc-body"><span class="cc-big">${esc(m.big)}</span>${m.unit ? `<span class="cc-unit">${esc(m.unit)}</span>` : ""}
+      ${countLine(cfg, m)}<span class="cc-more">Days, plans and forecast ${icon("chevronRight", 16)}</span></span>`;
+}
+
 export function badgeText(cfg) {
   const m = mood(cfg);
   if (m.st.phase === "before") return m.st.daysToGo === 1 ? "1 day" : `${m.st.daysToGo} days`;
   if (m.st.phase === "during") return `Day ${m.st.dayIndex}`;
   return "Trip";
-}
-
-// A few Iznik-coloured tiles drifting down (more of them the closer it gets).
-function confetti(level) {
-  if (!level) return "";
-  const count = [0, 8, 16, 28][level];
-  const cols = ["--c-accent", "--c-primary", "--c-golden", "--c-ink-inverse"];
-  let h = "";
-  for (let i = 0; i < count; i++) {
-    const x = (i * 37) % 100, delay = ((i * 0.53) % 6).toFixed(2), dur = (7 + (i % 5)).toFixed(1), s = 6 + (i % 4) * 2;
-    h += `<i style="left:${x}%;width:${s}px;height:${s}px;background:var(${cols[i % cols.length]});animation-delay:-${delay}s;animation-duration:${dur}s"></i>`;
-  }
-  return `<div class="confetti" aria-hidden="true">${h}</div>`;
 }
 
 function forecastHtml(cfg, fc, m) {
@@ -102,7 +99,6 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo, dayPlan }) {
   el.innerHTML = `
     <div class="sp-photo" aria-hidden="true"><img src="${photo}" alt="" onload="this.parentNode.classList.add('is-loaded')"></div>
     <div class="sp-scrim" aria-hidden="true"></div>
-    ${confetti(m.level)}
     <div class="sp-inner">
       <div class="sp-hero">
         <h1 class="sp-big">${esc(m.big)}</h1>

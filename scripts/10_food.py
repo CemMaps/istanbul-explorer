@@ -55,8 +55,9 @@ NAME_KIND = [  # Turkish name words win over the category
     (r"b[öo]rek|simit|f[ıi]r[ıi]n|bakery", "bakery"), (r"[çc]ay bah|[çc]ay ocak|tea garden", "tea"),
     (r"kahve|coffee|kahvecisi", "coffee"), (r"meze", "meyhane"),
 ]
-VEGGIE = {"meyhane": True, "fish": True, "breakfast": True, "cafe": True, "coffee": True, "tea": True, "bakery": True,
-          "sweets": True, "icecream": True, "bar": True, "restaurant": True, "lokanta": True, "kebab": False}
+# True only where vegetarian dishes are a real part of the menu (meze, olive-oil dishes, breakfast spreads);
+# None = no claim either way (2026-11-06: a kind-level True on bars and coffee shops made "vegetarian" match 3,685 places).
+VEGGIE = {"meyhane": True, "lokanta": True, "breakfast": True, "kebab": False}
 SUMMARY = {
     "meyhane": "Meyhane: cold and hot meze, fish and rakı, best shared slowly in the evening.",
     "fish": "Fish restaurant: grilled catch of the day, meze and salads.",
@@ -93,7 +94,7 @@ def where(lon, lat):
     m = next((p for g, p in mah if g.contains(pt)), {})
     a = next((p for g, p in areas if g.contains(pt)), {})
     district = m.get("district") or "?"
-    return {"area": district, "mahalle": m.get("name"), "shore": "asia" if district in ASIA else "europe",
+    return {"area": district, "mahalle": (m.get("name") or "").removesuffix(" Mahallesi") or None, "shore": "asia" if district in ASIA else "europe",
             "character": {"primary": a.get("primary"), "secondary": a.get("secondary")} if a else None,
             "lifestyle": a.get("lifestyle")}
 
@@ -157,13 +158,33 @@ for q, e in ents.items():
         "tier": "worth-it" if full_sl >= 2 and img else "bonus", "score": 3.0 + 0.4 * full_sl,
         **where(lon, lat), "blurb": (e.get("descriptions", {}).get("en") or {}).get("value"),
         "summary": SUMMARY[k], "summary_source": "generated:kind",  # 08 swaps in the Wikipedia / Wikidata text when there is one
-        "veggie_friendly": VEGGIE[k], "indoor": True, "best_time": "evening" if k in ("meyhane", "fish", "bar") else "any",
+        "veggie_friendly": VEGGIE.get(k), "indoor": True, "best_time": "evening" if k in ("meyhane", "fish", "bar") else "any",
         "photos": [{"file": img}] if img else [], "wikidata": q,
         "wikipedia": (e.get("sitelinks", {}).get("enwiki") or {}).get("title", "").replace(" ", "_") or None,
         "source": f"wikidata:{q}"}, "geometry": {"type": "Point", "coordinates": [round(lon, 6), round(lat, 6)]}})
 print(f"wikidata food: {len(qids)} found, {len(wd_feats)} inside the study area")
 
 # ---------- 2. Overture ----------
+TR_LOWER = str.maketrans({"I": "ı", "İ": "i"})
+TR_UPPER = {"i": "İ", "ı": "I"}
+
+
+def clean_name(name):
+    """Business names as people would write them (2026-11-06 sample review): drop marketing tails after "|" or " – ",
+    other-script duplicates (Arabic after "\\"), emoji and stray quotes; ALL-CAPS names to Turkish-aware title case."""
+    n = re.split(r"\s+[|–]\s+|\s*\\\s*|\s+-(?=\S)", name)[0]
+    n = re.sub(r"[^\w\s'’&.,()\-/:+!%]", "", n)                      # emoji, flags, odd quotes
+    n = re.sub(r"\s+[؀-ۿ].*$", "", n)                         # trailing Arabic text
+    n = re.sub(r"\s{2,}", " ", n).strip(" -,")
+    if n.isupper() and len(n) > 3:
+        def word(w):
+            low = w.translate(TR_LOWER).lower()
+            return TR_UPPER.get(low[:1], low[:1].upper()) + low[1:]
+        n = " ".join(word(w) for w in n.split())
+    return n
+
+
+NOT_FOOD = re.compile(r"avm|karton|bardak|ambalaj", re.I)
 f = (DATA / "raw" / "overture_food.parquet").as_posix()
 keep = tuple(KIND_BY_CAT)
 rows = duckdb.connect().execute(f"""
@@ -175,23 +196,25 @@ rows = duckdb.connect().execute(f"""
       OR (confidence >= 0.75 AND n_soc > 0 AND regexp_matches(lower(name), 'meyhane|balık|balik|lokanta|kahvalt|esnaf')))
 """).fetchall()
 wd_pts = [(f_["geometry"]["coordinates"], norm(f_["properties"]["name"])) for f_ in wd_feats]
-ov_feats, seen = [], set()
+ov_feats, seen_at = [], {}
 for oid, name, cat, conf, lon, lat in rows:
     if not area.contains(Point(lon, lat)):
         continue
+    name = clean_name(name)
+    if len(name) < 3 or NOT_FOOD.search(name) or not re.search(r"[A-Za-zÇĞİÖŞÜçğıöşü]{2}", name):
+        continue  # a mall, a paper-cup shop, or nothing left after cleaning
     nn = norm(name)
     if any(haversine_m(lon, lat, *c) < 80 and (nn[:6] in wn or wn[:6] in nn) for c, wn in wd_pts):
         continue  # same place as a Wikidata entry
-    key = (nn, round(lon, 3), round(lat, 3))
-    if key in seen:
-        continue
-    seen.add(key)
+    if any(haversine_m(lon, lat, *c) < 150 for c in seen_at.get(nn, [])):
+        continue  # the same name twice within 150 m
+    seen_at.setdefault(nn, []).append((lon, lat))
     k = kind_of(name, cat)
     ov_feats.append({"type": "Feature", "properties": {
         # Lean on purpose (3,800 of these): no photos, Turkish name = name, text from the kind.
         "id": None, "name": name, "category": "Food & drink", "kind": k, "tier": "local",
         "score": round(1 + conf, 2), **where(lon, lat),
-        "summary": SUMMARY[k], "summary_source": "generated:kind", "veggie_friendly": VEGGIE[k],
+        "summary": SUMMARY[k], "summary_source": "generated:kind", "veggie_friendly": VEGGIE.get(k),
         "source": f"overture:{oid}"}, "geometry": {"type": "Point", "coordinates": [round(lon, 5), round(lat, 5)]}})
 print(f"overture food: {len(rows)} pass the filters, {len(ov_feats)} inside the study area after de-duplication")
 

@@ -47,7 +47,8 @@ function frostOutside(map, rings) {
   map.getCanvasContainer().after(veil);
   const cv = document.createElement("canvas");
   const ctx = cv.getContext("2d", { willReadFrequently: true });
-  const Q = 4, FEATHER_M = 1600, OFF = 4000;
+  // CLEAR_PX: a clear band just outside the line, so labels of places near the edge stay sharp (2026-11-06).
+  const Q = 4, FEATHER_M = 1600, OFF = 4000, CLEAR_PX = 30;
   let raf = 0;
   const draw = () => {
     raf = 0;
@@ -67,10 +68,10 @@ function frostOutside(map, rings) {
       ctx[i ? "lineTo" : "moveTo"](p.x / Q + OFF, p.y / Q);
     });
     ctx.closePath();
-    // Draw the shape far off-canvas and let only its blurred shadow land on the canvas; a stroke of
-    // width f grows it by f/2 first, so the fade sits outside the outline, not across it.
+    // Draw the shape far off-canvas and let only its blurred shadow land on the canvas; a stroke grows it
+    // first (by CLEAR_PX + f/2), so the fade starts a little outside the outline instead of across it.
     ctx.shadowColor = "black"; ctx.shadowBlur = f; ctx.shadowOffsetX = -OFF;
-    ctx.lineWidth = f; ctx.lineJoin = "round";
+    ctx.lineWidth = f + (2 * CLEAR_PX) / Q; ctx.lineJoin = "round";
     ctx.fill(); ctx.stroke();
     ctx.shadowBlur = 0; ctx.shadowOffsetX = 0;
     const px = ctx.getImageData(0, 0, cv.width, cv.height).data;
@@ -81,6 +82,7 @@ function frostOutside(map, rings) {
   };
   const queue = () => { if (!raf) raf = requestAnimationFrame(draw); };
   map.on("move", draw); map.on("resize", queue); // same frame as the map, so the veil never lags
+  map.on("remove", () => { cancelAnimationFrame(raf); veil.remove(); }); // theme switch rebuilds the map: no stale veil
   draw();
 }
 
@@ -128,6 +130,9 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   const frosted = CSS.supports("backdrop-filter", "blur(2px)") || CSS.supports("-webkit-backdrop-filter", "blur(2px)");
   map.addLayer({ id: "mask", type: "fill", source: "mask",
     paint: { "fill-color": cssVar("--c-surface"), "fill-opacity": frosted ? 0.18 : Math.max(theme.maskOpacity ?? 0.7, 0.78) } });
+  // A very light outline, so the eye has an edge to rest on (2026-11-06).
+  map.addLayer({ id: "mask-edge", type: "line", source: "mask",
+    paint: { "line-color": cssVar("--c-ink-2"), "line-width": 1, "line-opacity": 0.22 } });
   if (frosted) frostOutside(map, data.mask.features[0].geometry.coordinates.slice(1));
 
   // Vibe map: soft translucent fill under everything, off by default (character or lifestyle colouring).
@@ -144,7 +149,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   map.addLayer({ id: "ferries", type: "line", source: "ferries",
     layout: { "line-cap": "round", "line-join": "round" },
     paint: { "line-color": cssVar("--route-ferry"), "line-width": ["interpolate", ["linear"], ["zoom"], 10, 0.8, 15, 2],
-             "line-dasharray": [2, 2.5], "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.3, 14, 0.55] } });
+             "line-dasharray": [2, 2.5], "line-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0.18, 14, 0.32] } }); // quieter (2026-11-06)
 
   // Stations and piers (close zoom only)
   map.addSource("stops", { type: "geojson", data: data.stops });

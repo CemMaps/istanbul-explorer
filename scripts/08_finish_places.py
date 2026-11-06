@@ -128,6 +128,8 @@ n_wp = 0
 for f in feats:
     p = f["properties"]
     p["category"] = REFILE.get(p["category"], p["category"])
+    # Wikipedia-style disambiguation ("Kasım Ağa Mosque, Istanbul") reads oddly on a map of Istanbul (2026-11-06).
+    p["name"] = re.sub(r",\s*(Istanbul|İstanbul)$", "", p["name"])
     if p["category"] == "Mosques & churches":
         p["kind"] = kind(p)
     elif p["category"] != "Food & drink":  # food keeps its own kind (10_food.py)

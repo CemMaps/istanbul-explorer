@@ -1,6 +1,6 @@
 {
   "id": "iznik-navy",
-  "label": "Iznik",
+  "label": "Iznik", "hint": "Light, blue",
   "app": {
     "name": "Istanbul Explorer",
     "short": "Istanbul",

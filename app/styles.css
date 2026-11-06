@@ -80,9 +80,9 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .rightnow b { display: block; font-size: 15.5px; font-weight: 700; line-height: 1.3; margin: 1px 0; color: var(--c-ink); }
 
 /* Cards (horizontal) */
-.cards { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter); margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 4px; scrollbar-width: none; }
+.cards { display: flex; align-items: flex-start; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: var(--gutter); margin: 0 calc(-1 * var(--gutter)); padding: 0 var(--gutter) 4px; scrollbar-width: none; }
 .cards::-webkit-scrollbar { display: none; }
-.card { flex: none; width: 168px; scroll-snap-align: start; text-align: left; }
+.card { flex: none; width: 168px; scroll-snap-align: start; text-align: left; display: flex; flex-direction: column; justify-content: flex-start; } /* a button centres its content: two-line names pushed the photo up */
 .thumb { position: relative; height: 112px; border-radius: var(--radius-sm); overflow: hidden; background: color-mix(in srgb, var(--cat, var(--c-primary)) 13%, var(--c-surface-2)); color: color-mix(in srgb, var(--cat, var(--c-primary)) 70%, transparent); display: grid; place-items: center; }
 .thumb img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .thumb .pill { position: absolute; left: 8px; bottom: 8px; }

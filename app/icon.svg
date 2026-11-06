@@ -1,38 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- Istanbul Explorer app icon (2026-11-06, v3): a map pin holding a mosque at sunset over the Bosphorus,
-       on a navy topographic map. -->
-  <clipPath id="r"><rect width="512" height="512" rx="112"/></clipPath>
-  <g clip-path="url(#r)">
-  <rect width="512" height="512" fill="#14213D"/>
+  <!-- Istanbul Explorer app icon (2026-11-06, v4, after Cem's draft): a map pin holding a mosque at sunset over the
+       Bosphorus, on a plain blue ground. -->
   <defs>
-    <linearGradient id="duskb" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#1B2A52"/><stop offset=".45" stop-color="#7A3E63"/><stop offset=".78" stop-color="#E06A45"/><stop offset="1" stop-color="#F08A4B"/>
+    <linearGradient id="bgb" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1D3F94"/><stop offset="1" stop-color="#0E1E4F"/></linearGradient>
+    <linearGradient id="skyb" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2B2A6B"/><stop offset=".35" stop-color="#8A3F6E"/><stop offset=".68" stop-color="#E8704A"/><stop offset=".86" stop-color="#F7A23F"/>
     </linearGradient>
-    <clipPath id="pinb"><path d="M256 452L139.6 308.5A150 150 0 1 1 372.4 308.5Z"/></clipPath>
+    <linearGradient id="seab" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1E4FA8"/><stop offset="1" stop-color="#10306E"/></linearGradient>
+    <radialGradient id="glowb"><stop offset=".55" stop-color="#FFD25E"/><stop offset=".78" stop-color="#FBB848" stop-opacity=".75"/><stop offset="1" stop-color="#F7A23F" stop-opacity="0"/></radialGradient>
+    <filter id="softb" x="-20%" y="-200%" width="140%" height="500%"><feGaussianBlur stdDeviation="3.2"/></filter>
+    <clipPath id="pinb"><path d="M256 470L134.9 333.6A162 162 0 1 1 377.1 333.6Z"/></clipPath>
   </defs>
-  <!-- contour lines: a topographic map behind the pin -->
-  <g fill="none" stroke="#24365F" stroke-width="7" stroke-linecap="round">
-    <path d="M-20 120c60-30 110 10 160-20s70-90 60-130"/><path d="M-20 175c80-34 150 14 205-26s95-110 85-170"/>
-    <path d="M300 540c10-60 60-80 110-90s90-50 120-110"/><path d="M360 540c6-40 40-60 80-66s60-30 90-70"/>
-    <path d="M-20 400c50-20 80 10 110 40s60 60 70 120"/>
-  </g>
-  <ellipse cx="256" cy="458" rx="54" ry="12" fill="#F6C25B" opacity=".45"/>
+  <rect width="512" height="512" rx="112" fill="url(#bgb)"/>
   <g clip-path="url(#pinb)">
-    <rect x="100" y="60" width="312" height="262" fill="url(#duskb)"/>
-    <circle cx="256" cy="262" r="64" fill="#F8C766"/>
-    <g fill="#14213D">
-      <path d="M204 270a52 44 0 0 1 104 0z"/>
-      <rect x="254.5" y="212" width="3" height="16"/><path d="M262 205a7 7 0 1 1-6-9 5.6 5.6 0 1 0 6 9z"/>
-      <rect x="208" y="268" width="96" height="34"/>
-      <path d="M152 300a30 24 0 0 1 60 0zM300 300a30 24 0 0 1 60 0z"/>
-      <path d="M188 290a14 12 0 0 1 28 0zM296 290a14 12 0 0 1 28 0z"/>
-      <rect x="140" y="296" width="232" height="30"/>
-      <path d="M150 116l7 38h-14z"/><rect x="144" y="152" width="12" height="174"/><rect x="139" y="196" width="22" height="6" rx="2"/><rect x="140" y="240" width="20" height="6" rx="2"/>
-      <path d="M362 116l7 38h-14z"/><rect x="356" y="152" width="12" height="174"/><rect x="351" y="196" width="22" height="6" rx="2"/><rect x="352" y="240" width="20" height="6" rx="2"/>
+    <rect x="60" y="50" width="392" height="290" fill="url(#skyb)"/>
+    <circle cx="256" cy="284" r="104" fill="url(#glowb)"/>
+    <g fill="#141F47">
+      <path d="M196 290a60 56 0 0 1 120 0z"/>
+      <rect x="254" y="218" width="4" height="20" rx="2"/><circle cx="256" cy="239" r="5"/>
+      <path d="M263 215a8.5 8.5 0 1 1-8-11 6.6 6.6 0 1 0 8 11z"/>
+      <rect x="192" y="286" width="128" height="20"/>
+      <path d="M156 314a20 18 0 0 1 40 0zM316 314a20 18 0 0 1 40 0z"/>
+      <path d="M180 306a14 12 0 0 1 28 0zM304 306a14 12 0 0 1 28 0z"/>
+      <rect x="134" y="312" width="244" height="26"/><rect x="150" y="304" width="212" height="10"/>
+      <path d="M148 128l9 42h-18z"/><rect x="141" y="168" width="14" height="170"/><rect x="136" y="214" width="24" height="7" rx="2"/><rect x="137" y="262" width="22" height="7" rx="2"/>
+      <path d="M364 128l9 42h-18z"/><rect x="357" y="168" width="14" height="170"/><rect x="352" y="214" width="24" height="7" rx="2"/><rect x="353" y="262" width="22" height="7" rx="2"/>
     </g>
-    <rect x="100" y="322" width="312" height="140" fill="#1F4FA3"/>
-    <path d="M150 350c40 22 80 26 106 18s60-14 106 6" fill="none" stroke="#FBF1D6" stroke-width="7" stroke-linecap="round" stroke-dasharray="14 13" opacity=".9"/>
+    <rect x="60" y="336" width="392" height="140" fill="url(#seab)"/>
+    <g fill="#FBB848" filter="url(#softb)">
+      <ellipse cx="256" cy="350" rx="70" ry="5" opacity=".95"/><ellipse cx="256" cy="366" rx="54" ry="4.5" opacity=".8"/>
+      <ellipse cx="256" cy="382" rx="40" ry="4" opacity=".6"/><ellipse cx="256" cy="398" rx="26" ry="3.5" opacity=".45"/>
+    </g>
   </g>
-  <path d="M256 452L139.6 308.5A150 150 0 1 1 372.4 308.5Z" fill="none" stroke="#FBF1D6" stroke-width="12" stroke-linejoin="round"/>
-  </g>
+  <path d="M256 470L134.9 333.6A162 162 0 1 1 377.1 333.6Z" fill="none" stroke="#FBF3E4" stroke-width="10" stroke-linejoin="round"/>
 </svg>

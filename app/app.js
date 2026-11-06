@@ -206,7 +206,7 @@ function renderList() {
   const items = inViewPlaces();
   // Always "in view" (2026-11-06, Cem: "Top picks in Istanbul" read as inconsistent). Zoomed right out, nudge to zoom in.
   const city = MAP.map.getZoom() < 11.8;
-  $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${(({ title, label }) => title || label)(CFG.chips.find((c) => c.id === S.chip))} in view` : city ? "Zoom in for top picks" : "Top picks in view";
+  $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${(({ title, label }) => title || label)(CFG.chips.find((c) => c.id === S.chip))} in view` : "Top picks in view"; // zoomed out, the sheet bar says "zoom in to explore an area"
   const sub = (x) => `${esc(x.p.area)}${S.near ? ` · ${fmtDist(x.d)}` : ""}`;
   $("#cards").innerHTML = items.length
     ? items.slice(0, 12).map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p)}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${sub(x)}</div></button>`).join("")

@@ -94,6 +94,27 @@ def kind(p):
     return "mosque"
 
 
+def pm_kind(p):
+    """Palaces & museums are more than museums (2026-11-06, Cem): the walls or a column read better as what they are."""
+    n = (p["name"] + " " + (p.get("name_tr") or "")).lower()
+    cl = " | ".join(cands.get(p["wikidata"], {}).get("classes", [])).lower()
+    if re.search(r"museum|müze", n):
+        return "museum"
+    if re.search(r"palace|saray|kiosk|köşk|kasr|pavilion", n):
+        return "palace"
+    if re.search(r"cistern|sarnıç", n):
+        return "cistern"
+    if re.search(r"fortress|castle|hisar|kale|yedikule", n) or re.search(r"fortress|castle", cl):
+        return "fortress"
+    if re.search(r"walls?|gate|kapı", n) or re.search(r"city wall|city gate", cl):
+        return "walls"
+    if re.search(r"museum", cl):
+        return "museum"
+    if re.search(r"palace", cl):
+        return "palace"
+    return "landmark"
+
+
 def extracts(titles):
     out = {}
     for i in range(0, len(titles), 20):  # extracts allow 20 pages per call
@@ -164,6 +185,8 @@ for f in feats:
     p["name"] = re.sub(r",\s*(Istanbul|İstanbul)$", "", p["name"])
     if p["category"] == "Mosques & churches":
         p["kind"] = kind(p)
+    elif p["category"] == "Palaces & museums":
+        p["kind"] = pm_kind(p)
     elif p["category"] != "Food & drink":  # food keeps its own kind (10_food.py)
         p.pop("kind", None)
     t = (p.get("wikipedia") or "").replace("_", " ")

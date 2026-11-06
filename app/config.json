@@ -34,7 +34,7 @@
   },
   "categories": [
     { "id": "Mosques & churches", "short": "Mosque", "icon": "dome", "kindIcons": { "church": "church", "monastery": "church", "synagogue": "synagogue" }, "kindColors": { "church": "Churches & synagogues", "monastery": "Churches & synagogues", "synagogue": "Churches & synagogues" }, "kinds": { "mosque": "Mosque", "church": "Church", "synagogue": "Synagogue", "monastery": "Monastery", "tomb": "Tomb" } },
-    { "id": "Palaces & museums", "short": "Museum", "icon": "columns" },
+    { "id": "Palaces & museums", "short": "Landmark", "icon": "columns", "kinds": { "palace": "Palace", "museum": "Museum", "cistern": "Cistern", "fortress": "Fortress", "walls": "City walls", "landmark": "Landmark" } },
     { "id": "Viewpoints", "short": "Viewpoint", "icon": "eye" },
     { "id": "Bazaars & markets", "short": "Bazaar", "icon": "bag" },
     { "id": "Food & drink", "short": "Food", "icon": "utensils", "kinds": { "meyhane": "Meyhane", "fish": "Fish restaurant", "kebab": "Kebab & grill", "lokanta": "Lokanta", "breakfast": "Breakfast", "cafe": "Café", "coffee": "Coffee", "tea": "Tea house", "bakery": "Bakery", "sweets": "Sweets", "icecream": "Ice cream", "bar": "Bar", "restaurant": "Restaurant" } },

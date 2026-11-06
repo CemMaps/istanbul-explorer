@@ -85,7 +85,7 @@ function fitToMatches() {
 const THUMB = 330;
 function thumb(p, { pill = true, heart = true, badge = "" } = {}) {
   const ph = p.photos?.[0];
-  return `<div class="thumb" style="--cat: var(${catVar(p.category)})">
+  return `<div class="thumb" style="--cat: var(${catVar(p.colkey || p.category)})">
     ${ph ? `<img loading="lazy" alt="" src="${photoUrl(ph.file, THUMB)}" onerror="this.remove()">` : ""}
     ${icon(iconOf(p), 30)}
     ${pill && !badge ? `<span class="pill">${esc(typeLabel(p))}</span>` : ""}
@@ -152,7 +152,7 @@ function renderSuggest() {
     .sort((a, b) => (norm(b.name).startsWith(n) - norm(a.name).startsWith(n)) || tierRank[a.tier] - tierRank[b.tier] || b.score - a.score)
     .slice(0, SUGGEST_MAX);
   box.innerHTML = `<button class="sg-row sg-all" data-sg-q="${esc(q)}">${icon("search", 18)}<span>Search for “${esc(q)}”<small>${m.length ? `${m.length} place${m.length > 1 ? "s" : ""} on the map` : "No matches yet"}</small></span></button>`
-    + top.map((p) => `<button class="sg-row" data-sg-open="${esc(p.id)}"><span class="sg-ico" style="--cat: var(${catVar(p.category)})">${icon(iconOf(p), 16)}</span><span>${esc(p.name)}<small>${esc(typeLabel(p))} · ${esc(p.mahalle || p.area || "")}</small></span></button>`).join("");
+    + top.map((p) => `<button class="sg-row" data-sg-open="${esc(p.id)}"><span class="sg-ico" style="--cat: var(${catVar(p.colkey || p.category)})">${icon(iconOf(p), 16)}</span><span>${esc(p.name)}<small>${esc(typeLabel(p))} · ${esc(p.mahalle || p.area || "")}</small></span></button>`).join("");
   box.hidden = false;
 }
 function runSearch(q) {
@@ -330,7 +330,7 @@ function openPlace(id) {
   MAP.map.easeTo({ center: coord, zoom: Math.max(MAP.map.getZoom(), CFG.tiers[p.tier].minzoom + 0.6, 14), duration: 0 });
   const photos = p.photos?.length ? p.photos : [null];
   const el = $("#place");
-  el.style.setProperty("--cat", `var(${catVar(p.category)})`);
+  el.style.setProperty("--cat", `var(${catVar(p.colkey || p.category)})`);
   const near = closeBy(id, coord);
   // Short description: Wikipedia intro (≤ ~50 words, scripts/08_finish_places.py), else the Wikidata line.
   const about = p.summary || (p.blurb ? p.blurb[0].toUpperCase() + p.blurb.slice(1) : "");
@@ -596,10 +596,10 @@ function renderInstall() {
 // ---------- map style (basemap) picker ----------
 // Four maps: the theme's own map, a detailed street map, satellite with labels, topographic. Remembered per phone.
 const BASES = [
-  { id: "default", label: "Our map", hint: "Clean, matches the theme" },
+  { id: "default", label: "Auto", hint: "Matches app theme" },
   { id: "streets", label: "Streets", hint: "More detail" },
   { id: "satellite", label: "Satellite", hint: "With labels" },
-  { id: "topo", label: "Hills", hint: "Topographic" },
+  { id: "hills", label: "Hills", hint: "Shows the slopes" },
 ];
 const BASE_KEY = "oit:basemap";
 const getBase = () => { try { const b = localStorage.getItem(BASE_KEY); return EXTRA_BASEMAPS[b] ? b : "default"; } catch { return "default"; } };
@@ -614,6 +614,10 @@ function baseThumb(id) { // one z12 tile over the old city as a preview; our own
     <path d="M0 27c9-2 16 1 22-4s7-12 13-15 13-2 25-6V0H38c-4 6-9 7-14 12S12 22 0 21z" style="fill: var(--c-map-water)"/>
     <path d="M40 40c1-8 6-12 12-14s8-1 8-1v15z" style="fill: var(--c-map-park)"/>
     <path d="M4 36l14-6 10 3 12-9M30 40l-3-7" fill="none" style="stroke: var(--c-map-road)" stroke-width="1.6"/></svg>`;
+  if (id === "hills") return `<svg class="bp-own" viewBox="0 0 60 40" aria-hidden="true"><rect width="60" height="40" style="fill: var(--c-map-land)"/>
+    <path d="M0 40V30c8-6 12-14 20-14s10 8 16 8 10-12 16-12 8 6 8 6v22z" style="fill: var(--c-ink-2)" opacity=".28"/>
+    <path d="M0 40V34c9-4 13-10 20-10s9 6 15 6 11-9 17-9 8 5 8 5v14z" style="fill: var(--c-ink-2)" opacity=".22"/>
+    <path d="M38 0c-4 6-9 7-14 9S14 13 0 12V0z" style="fill: var(--c-map-water)"/></svg>`;
   const u = EXTRA_BASEMAPS[id].tiles[0].replace("{z}", 12).replace("{x}", 2377).replace("{y}", 1535);
   return `<img src="${u}" alt="" loading="lazy">`;
 }
@@ -1039,7 +1043,8 @@ function mapLoading(on) {
 }
 async function buildMap(camera) {
   mapLoading(true);
-  MAP = await createMap({ container: "map", theme: THEME, config: CFG, data: DATA, onPlace: (id) => { if (!S.here) openPlace(id); } });
+  MAP = await createMap({ container: "map", theme: THEME, config: CFG, data: DATA, onPlace: (id) => { if (!S.here) openPlace(id); },
+    onStop: (st) => { if (!S.here) toast(`${st.name} · ${{ metro: "Metro station", tram: "Tram stop", funicular: "Funicular", ferry: "Ferry pier", rail: "Train station" }[st.mode] || "Stop"}${st.lines ? ` (${[].concat(st.lines).join(", ")})` : ""}`); } });
   if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
   if (camera) MAP.map.jumpTo(camera);
   MAP.map.on("moveend", renderList);
@@ -1085,6 +1090,7 @@ async function switchTheme() {
   for (const f of places.features) {
     const ki = catCfg(f.properties.category).kindIcons?.[f.properties.kind];
     f.properties.catslug = slug(f.properties.category) + (ki ? `-${f.properties.kind}` : "");
+    f.properties.colkey = catCfg(f.properties.category).kindColors?.[f.properties.kind] || f.properties.category;
     f.properties.asLabel = labelCats.has(f.properties.category);
     f.properties.dim = false;
   }

@@ -1,6 +1,6 @@
 // MapLibre setup: themed basemap, study-area mask, ferries, stops, fixed points and place pins by tier.
 import { cssVar, catVar } from "./theme.js";
-import { pinImage } from "./icons.js";
+import { pinImage, stopImage } from "./icons.js";
 
 const BASEMAPS = {
   positron: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
@@ -18,9 +18,12 @@ export const EXTRA_BASEMAPS = {
   satellite: { tiles: ["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"], max: 19,
     labels: ["https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"],
     credit: "Imagery © Esri, Maxar, Earthstar Geographics" },
-  topo: { tiles: ["a", "b", "c"].map((sub) => `https://${sub}.tile.opentopomap.org/{z}/{x}/{y}.png`), max: 17,
-    credit: "© OpenStreetMap · SRTM · © OpenTopoMap (CC BY-SA)" },
+  // Hills (2026-11-06): OpenTopoMap was far too busy at street zoom. Now the theme's own map plus soft hill shading
+  // drawn by MapLibre from keyless Terrarium elevation tiles (Mapzen/Tilezen on AWS Open Data, CORS *).
+  hills: { hillshade: "https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png", max: 15,
+    credit: "© OpenStreetMap · © CARTO · Elevation: Mapzen, AWS Open Data" },
 };
+const SMALL_PX = 17;
 const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
 const FONT_REG = ["Montserrat Regular", "Open Sans Regular"];
 const FONT_BOLD = ["Montserrat Medium", "Open Sans Semibold"];
@@ -100,7 +103,7 @@ function frostOutside(map, rings) {
   draw();
 }
 
-export async function createMap({ container, theme, config, data, onPlace }) {
+export async function createMap({ container, theme, config, data, onPlace, onStop }) {
   const map = new maplibregl.Map({
     container,
     style: BASEMAPS[theme.basemap] || BASEMAPS.positron,
@@ -108,7 +111,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     minZoom: config.map.minZoom, maxZoom: config.map.maxZoom,
     attributionControl: false, // credit shown as a small line on the map + full credits screen (see app.js)
     pitchWithRotate: false, dragRotate: false,
-    fadeDuration: 0, // no symbol fade: pins hidden by a collision used to blink back in after closing a card
+    fadeDuration: 120, // short fade so collisions don't pop while zooming (selected pin ignores placement, so no blink)
   });
   map.touchZoomRotate.disableRotation();
   await new Promise((r) => map.on("load", r));
@@ -130,8 +133,11 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     const col = cssVar(catVar(c.id));
     map.addImage(`pin-${slug(c.id)}`, await pinImage(c.icon, col, bg, { filled: pinFilled }), { pixelRatio: 2 });
     map.addImage(`pin-${slug(c.id)}-sel`, await pinImage(c.icon, col, bg, { filled: !pinFilled }), { pixelRatio: 2 });
+    // Food ("local" tier) icons are drawn at their real size with thicker lines: scaling the big pin down blurred them.
+    map.addImage(`pin-${slug(c.id)}-sm`, await pinImage(c.icon, col, bg, { filled: pinFilled, px: SMALL_PX, ratio: 3, ringW: 3.4, strokeW: 3.2 }), { pixelRatio: 3 });
     // Kinds with their own icon (churches, synagogues): same colour, own glyph; places get catslug "<cat>-<kind>".
     for (const [kind, ic] of Object.entries(c.kindIcons || {})) {
+      const col = c.kindColors?.[kind] ? cssVar(catVar(c.kindColors[kind])) : cssVar(catVar(c.id)); // churches: own colour
       map.addImage(`pin-${slug(c.id)}-${kind}`, await pinImage(ic, col, bg, { filled: pinFilled }), { pixelRatio: 2 });
       map.addImage(`pin-${slug(c.id)}-${kind}-sel`, await pinImage(ic, col, bg, { filled: !pinFilled }), { pixelRatio: 2 });
     }
@@ -174,11 +180,19 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   // Stations and piers (close zoom only)
   map.addSource("stops", { type: "geojson", data: data.stops });
   const modeColor = ["match", ["get", "mode"], ...["metro", "tram", "funicular", "ferry", "rail"].flatMap((m) => [m, cssVar(`--transit-${m}`)]), cssVar("--c-ink-2")];
-  map.addLayer({ id: "stops", type: "circle", source: "stops", minzoom: 14.5,
-    paint: { "circle-radius": 4, "circle-color": modeColor, "circle-stroke-color": bg, "circle-stroke-width": 1.5 } });
-  map.addLayer({ id: "stops-lbl", type: "symbol", source: "stops", minzoom: 15.5,
-    layout: { "text-field": ["get", "name"], "text-size": 11, "text-font": FONT_REG, "text-offset": [0, 0.9], "text-anchor": "top", "text-optional": true },
+  // Stations and piers: a small badge with the mode letter (or a boat), never a plain dot that looks like a place.
+  for (const m of ["metro", "tram", "funicular", "ferry", "rail"]) map.addImage(`stop-${m}`, await stopImage(m, cssVar(`--transit-${m}`) || cssVar("--c-ink-2")), { pixelRatio: 3 });
+  map.addLayer({ id: "stops", type: "symbol", source: "stops", minzoom: 14.5,
+    layout: { "icon-image": ["concat", "stop-", ["coalesce", ["get", "mode"], "rail"]], "icon-size": ["interpolate", ["linear"], ["zoom"], 14.5, 0.8, 17, 1],
+              "icon-allow-overlap": true, "icon-ignore-placement": true,
+              "text-field": ["step", ["zoom"], "", 15.5, ["get", "name"]], "text-size": 11, "text-font": FONT_REG, "text-offset": [0, 1.0], "text-anchor": "top", "text-optional": true },
     paint: { "text-color": cssVar("--c-ink-2"), "text-halo-color": bg, "text-halo-width": 1.2 } });
+  map.on("click", "stops", (e) => {
+    if (map.queryRenderedFeatures(e.point, { layers: ["selected"] }).length) return;
+    const pins = map.getStyle().layers.filter((l) => /^pins-|^dots-/.test(l.id)).map((l) => l.id);
+    if (map.queryRenderedFeatures(e.point, { layers: pins }).length) return; // a place on top wins
+    onStop?.(e.features[0].properties);
+  });
 
   // Places
   map.addSource("places", { type: "geojson", data: data.places, promoteId: "id" });
@@ -189,7 +203,9 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   // Discovery dots: every place is always at least a small coloured dot, so nothing is invisible.
   // They show a few zoom levels before the tier's icons, then sit underneath them; if an icon is
   // hidden by a collision, its dot still shows.
-  const catColor = ["match", ["get", "category"], ...config.categories.flatMap((c) => [c.id, cssVar(catVar(c.id))]), cssVar("--c-ink-2")];
+  // Colour key per place: its category, or a kind's own colour (churches & synagogues), set as "colkey" in app.js.
+  const colKeys = [...new Set(config.categories.flatMap((c) => [c.id, ...Object.values(c.kindColors || {})]))];
+  const catColor = ["match", ["get", "colkey"], ...colKeys.flatMap((k) => [k, cssVar(catVar(k)) || cssVar("--c-ink-2")]), cssVar("--c-ink-2")];
   for (const [tier, t] of tiers) {
     // Food ("local") dots only appear about one zoom level before their icons, so the city view stays calm.
     const from = Math.max(config.map.minZoom ?? 9, (t.minzoom || 10) - (tier === "local" ? 1.2 : tier === "bonus" ? 2.6 : 3));
@@ -214,10 +230,11 @@ export async function createMap({ container, theme, config, data, onPlace }) {
       id: `pins-${tier}`, type: "symbol", source: "places", minzoom: t.minzoom,
       filter: ["all", isTier, notLabelCat],
       layout: {
-        "icon-image": ["concat", "pin-", ["get", "catslug"]],
+        "icon-image": tier === "local" ? ["concat", "pin-", ["get", "catslug"], "-sm"] : ["concat", "pin-", ["get", "catslug"]],
         // Small at city zoom so more icons fit; collisions on, so the most famous win instead of piling up
         // (a hidden icon still shows as its dot underneath).
-        "icon-size": ["interpolate", ["linear"], ["zoom"], 10, t.size * 0.48, 12, t.size * 0.6, 14, t.size * 0.8, 17, t.size],
+        // Food icons keep one size (17 px) at every zoom: a growing icon re-runs collisions every frame (flicker).
+        "icon-size": tier === "local" ? 1 : ["interpolate", ["linear"], ["zoom"], 10, t.size * 0.48, 12, t.size * 0.6, 14, t.size * 0.8, 17, t.size],
         "icon-allow-overlap": false, "icon-padding": tier === "local" ? 3 : 0, // food: smaller and spaced, the rest stay dots
         "symbol-sort-key": ["-", 0, ["get", "score"]],
         "text-field": ["step", ["zoom"], "", labelFrom, ["get", "name"]],
@@ -253,7 +270,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     layout: { "icon-image": ["match", ["get", "kind"], "home", "pin-home", "pin-airport"], "icon-allow-overlap": true,
               // same size as a must-see pin
               "icon-size": ["interpolate", ["linear"], ["zoom"], 10, config.tiers["must-see"].size * 0.62, 14, config.tiers["must-see"].size * 0.82, 17, config.tiers["must-see"].size],
-              "text-field": ["step", ["zoom"], "", 13, ["get", "name"]], "text-font": FONT_BOLD, "text-size": 11.5,
+              "text-field": ["step", ["zoom"], "", 13, ["match", ["get", "kind"], "home", "", ["get", "name"]]], "text-font": FONT_BOLD, "text-size": 11.5, // no "Our flat" label (2026-11-06)
               "text-offset": [0, 1.4], "text-anchor": "top", "text-optional": true },
     paint: { "text-color": navy, "text-halo-color": bg, "text-halo-width": 1.4 } });
 
@@ -348,10 +365,22 @@ export async function createMap({ container, theme, config, data, onPlace }) {
       }
     },
     setBasemap(id) {
-      for (const k of ["extra-base", "extra-labels"]) { if (map.getLayer(k)) map.removeLayer(k); if (map.getSource(k)) map.removeSource(k); }
+      for (const k of ["extra-base", "extra-labels", "hills"]) { if (map.getLayer(k)) map.removeLayer(k); if (map.getSource(k)) map.removeSource(k); }
       const b = EXTRA_BASEMAPS[id];
-      for (const l of baseLayerIds) if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", b ? "none" : "visible");
+      for (const l of baseLayerIds) if (map.getLayer(l)) map.setLayoutProperty(l, "visibility", b && !b.hillshade ? "none" : "visible");
       if (!b) return;
+      if (b.hillshade) {
+        // Shade sits under roads, buildings and labels (above land, parks and water), in theme colours.
+        const above = baseLayerIds.find((l) => /road|tunnel|bridge|building|boundary|label|place|poi/.test(l)) || (map.getLayer("mask") ? "mask" : undefined);
+        const dark = theme.basemap === "dark";
+        map.addSource("hills", { type: "raster-dem", tiles: [b.hillshade], tileSize: 256, maxzoom: b.max, encoding: "terrarium" });
+        map.addLayer({ id: "hills", type: "hillshade", source: "hills", paint: {
+          "hillshade-exaggeration": 0.75, "hillshade-illumination-direction": 315,
+          "hillshade-shadow-color": dark ? "black" : cssVar("--c-ink-2"),
+          "hillshade-highlight-color": dark ? cssVar("--c-ink-2") : cssVar("--c-surface"),
+          "hillshade-accent-color": dark ? "black" : cssVar("--c-ink-2") } }, above);
+        return;
+      }
       const before = map.getLayer("mask") ? "mask" : undefined; // under the edge veil, lines and pins
       map.addSource("extra-base", { type: "raster", tiles: b.tiles, tileSize: 256, maxzoom: b.max });
       map.addLayer({ id: "extra-base", type: "raster", source: "extra-base" }, before);

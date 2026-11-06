@@ -1,7 +1,8 @@
 // Line icons, 24×24, stroke = currentColor. Drawn for this app (simple geometric shapes).
 const P = {
   dome: '<path d="M4 20h16"/><path d="M6 20v-6a6 6 0 0 1 12 0v6"/><path d="M12 8V5"/><path d="M12 5c1.2 0 1.8-.6 1.8-1.5"/><path d="M2.5 20V9.5l1-1.5 1 1.5V20"/><path d="M19.5 20V9.5l1-1.5 1 1.5V20"/>',
-  columns: '<path d="M3 9l9-5 9 5"/><path d="M4 9h16"/><path d="M6 9v9M10 9v9M14 9v9M18 9v9"/><path d="M3 20h18"/>',
+  // Palaces & museums: a palace front with a small dome and flag (the old columns looked like a university, 2026-11-06).
+  columns: '<path d="M3 20h18"/><path d="M4.5 20v-8.5h15V20"/><path d="M8.5 11.5v-1a3.5 3.5 0 0 1 7 0v1"/><path d="M12 7V3l2.6 1-2.6 1"/><path d="M8 20v-3a1.5 1.5 0 0 1 3 0v3M13 20v-3a1.5 1.5 0 0 1 3 0v3"/>',
   eye: '<path d="M2 12s3.5-6.5 10-6.5S22 12 22 12s-3.5 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
   bag: '<path d="M5 8h14l-1 12H6L5 8z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/>',
   utensils: '<path d="M7 3v8"/><path d="M4.5 3v5a2.5 2.5 0 0 0 5 0V3"/><path d="M7 11v10"/><path d="M17 21V3c-2 1.5-3 4-3 7v3h3"/>',
@@ -12,10 +13,10 @@ const P = {
   // Church: gabled front with a cross; synagogue: the same front with a small Star of David (2026-11-06).
   church: '<path d="M12 2.5v5M9.8 4.6h4.4"/><path d="M5 21v-8.5L12 7.5l7 5V21"/><path d="M3 21h18"/><path d="M10 21v-3.5a2 2 0 0 1 4 0V21"/>',
   synagogue: '<path d="M5 21v-9.5L12 6l7 5.5V21"/><path d="M3 21h18"/><path d="M12 10.6l2.3 4H9.7z"/><path d="M12 17.2l-2.3-4h4.6z"/>',
-  // Routes tab: a folded map with a route between two stops.
-  routeMap: '<path d="M3 6.2l5.6-2.4 6.8 2.4L21 3.8v14l-5.6 2.4-6.8-2.4L3 20.2z"/><circle cx="7.6" cy="15" r="1.6" fill="currentColor" stroke="none"/><circle cx="16.4" cy="8.6" r="1.6" fill="currentColor" stroke="none"/><path d="M8.9 13.8c1.4-1.3 1.8-3.3 3.6-3.4 1.4 0 1.6 1.5 2.7-.6" stroke-dasharray="1.6 1.7"/>',
-  // Basemap button: two stacked map sheets.
-  mapStyle: '<path d="M12 3.5l8.5 4.3L12 12 3.5 7.8 12 3.5z"/><path d="M3.5 12.2L12 16.5l8.5-4.3"/><path d="M3.5 16.4L12 20.7l8.5-4.3"/>',
+  // Routes tab: a plain route, four stops joined (2026-11-06, Cem's reference).
+  routeMap: '<path d="M4.5 7l6 9 6-5 3.5 6.5" stroke-width="2.2"/><circle cx="4.5" cy="7" r="2.6" fill="currentColor" stroke="none"/><circle cx="10.5" cy="16" r="2.6" fill="currentColor" stroke="none"/><circle cx="16.5" cy="11" r="2.6" fill="currentColor" stroke="none"/><circle cx="20" cy="17.5" r="2.6" fill="currentColor" stroke="none"/>',
+  // Map style button: a folded paper map (layers icon read as "layers").
+  mapStyle: '<path d="M3 6.2l5.6-2.4 6.8 2.4L21 3.8v14l-5.6 2.4-6.8-2.4L3 20.2z"/><path d="M8.6 3.8v14M15.4 6.2v14"/>',
   plane2: '<path d="M2.5 19.5h19"/><path d="M3.6 13.8l2.3-.6 2 2 3.4-.9-3.3-6.1 1.9-.5 5.3 5.3 4.2-1.1a1.6 1.6 0 0 1 .8 3.1l-14.4 3.9z"/>',
   tulip: '<path d="M12 21v-8"/><path d="M12 13c-3.6 0-5.8-2.7-5.8-7l2.9 1.8L12 3.5l2.9 4.3 2.9-1.8c0 4.3-2.2 7-5.8 7z"/><path d="M12 19c-1.6-2.2-3.8-3.2-6.3-3 .6 2.4 3 3.9 6.3 3.9"/><path d="M12 19c1.6-2.2 3.8-3.2 6.3-3-.6 2.4-3 3.9-6.3 3.9"/>',
   chevDown: '<path d="M6 9l6 6 6-6"/>',
@@ -59,15 +60,30 @@ export function icon(name, size = 22, extra = "") {
 }
 
 // Map pin image: round badge with a category icon. Outlined = white fill + coloured ring/icon; filled = inverse.
-export function pinImage(name, color, bg, { filled = false, px = 44, ratio = 2, inkColor, ring } = {}) {
+export function pinImage(name, color, bg, { filled = false, px = 44, ratio = 2, inkColor, ring, ringW = 2.4, strokeW = 2.1 } = {}) {
   const s = px * ratio;
-  const ringW = 2.4;
   const fill = filled ? color : bg;
   const ink = inkColor || (filled ? bg : color);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 44 44">
     <circle cx="22" cy="22" r="${20 - ringW / 2}" fill="${fill}" stroke="${ring || color}" stroke-width="${ringW}"/>
-    <g transform="translate(11 11) scale(0.9167)" fill="none" stroke="${ink}" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">${P[name] || ""}</g>
+    <g transform="translate(11 11) scale(0.9167)" fill="none" stroke="${ink}" stroke-width="${strokeW}" stroke-linecap="round" stroke-linejoin="round">${P[name] || ""}</g>
   </svg>`;
+  return new Promise((resolve) => {
+    const img = new Image(s, s);
+    img.onload = () => resolve(img);
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  });
+}
+
+// Station / pier badge: small rounded square in the line colour with a letter (M metro, T tram, F funicular,
+// R rail) or a boat for ferries, so stops never look like place dots (2026-11-06).
+const BOAT = '<path d="M3.5 12.5h11l-1.6 2.6H5.1z" fill="white"/><path d="M6 12.5V9.2h5.2l1.5 3.3" fill="white"/><path d="M8.6 9.2V6.6" stroke="white" stroke-width="1.3" stroke-linecap="round"/>';
+export function stopImage(mode, color, px = 18, ratio = 3) {
+  const s = px * ratio;
+  const letter = { metro: "M", tram: "T", funicular: "F", rail: "R" }[mode];
+  const inner = letter ? `<text x="9" y="13.1" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="10.5" fill="white">${letter}</text>` : BOAT;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${s}" height="${s}" viewBox="0 0 18 18">
+    <rect x="1" y="1" width="16" height="16" rx="4.5" fill="${color}" stroke="white" stroke-width="1.6"/>${inner}</svg>`;
   return new Promise((resolve) => {
     const img = new Image(s, s);
     img.onload = () => resolve(img);

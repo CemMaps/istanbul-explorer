@@ -38,6 +38,35 @@ DROP = {
     "mekteb-i-asiret-i-humayun": "a school",
     "surp-hac-ermeni-lisesi": "a school",
 }
+# Iconic (must-see) by judgement, 2026-11-06 (Cem: "only a dozen iconic places? there must be more").
+# The fame score alone missed classic sights that every guide lists and promoted a few that no visitor seeks out.
+# QIDs copied from data/places.geojson. Checked against common "top sights" lists (Time Out, istanbul.com, tourist-pass guides).
+TIER = {
+    # promoted
+    "Q668641": "must-see",   # Spice Bazaar
+    "Q1137511": "must-see",  # Rüstem Pasha Mosque (Iznik tiles)
+    "Q176380": "must-see",   # Ortaköy Mosque, on the Bosphorus
+    "Q636978": "must-see",   # Istanbul Archaeology Museums
+    "Q81523": "must-see",    # Galata Bridge
+    "Q90801": "must-see",    # Rumeli Hisarı
+    "Q794349": "must-see",   # Beylerbeyi Palace
+    "Q1144576": "must-see",  # Little Hagia Sophia
+    "Q48796": "must-see",    # Balat
+    "Q985842": "must-see",   # Fener
+    "Q956677": "must-see",   # Eyüp Sultan Mosque
+    "Q525939": "must-see",   # Turkish and Islamic Arts Museum
+    "Q1560106": "must-see",  # Gülhane Park
+    "Q1463961": "must-see",  # İstanbul Modern
+    "Q6581129": "must-see",  # Pierre Loti Hill (Golden Horn view)
+    "Q6090478": "worth-it",  # Galata Mevlevi Lodge (whirling dervishes)
+    "Q2700998": "worth-it",  # Moda
+    # demoted: famous names, not places a visitor goes out of their way for
+    "Q18871": "worth-it",    # Sublime Porte (a gate to the governor's office)
+    "Q736072": "worth-it",   # Taksim Square
+    "Q644677": "worth-it",   # Şehzade Mosque
+    "Q7784788": "bonus",     # Yavuz Sultan Selim Bridge (far up the Bosphorus)
+}
+RECAT = {"Q736072": "Neighbourhoods"}  # Taksim Square is a square, not a park: shown as a label like İstiklal Avenue
 REFILE = {}  # 2026-11-06: the two pavilions are re-filed in the data already; real food comes from 10_food.py
 
 cands = {c["qid"]: c for c in json.loads((DATA / "work" / "candidates.json").read_text(encoding="utf-8"))}
@@ -128,6 +157,9 @@ n_wp = 0
 for f in feats:
     p = f["properties"]
     p["category"] = REFILE.get(p["category"], p["category"])
+    if p.get("wikidata") in TIER:
+        p["tier"], p["tier_basis"] = TIER[p["wikidata"]], "judgement 2026-11-06"
+    p["category"] = RECAT.get(p.get("wikidata"), p["category"])
     # Wikipedia-style disambiguation ("Kasım Ağa Mosque, Istanbul") reads oddly on a map of Istanbul (2026-11-06).
     p["name"] = re.sub(r",\s*(Istanbul|İstanbul)$", "", p["name"])
     if p["category"] == "Mosques & churches":

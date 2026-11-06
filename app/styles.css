@@ -515,7 +515,7 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 
 /* Vibe: the main map action. A white circle like the other map buttons, a bit bigger, with a small
    patchwork-of-neighbourhoods glyph over the word; navy when the vibe map is on (2026-11-06). */
-.vibe-btn { width: 56px; height: 56px; border-radius: 50%; background: var(--c-surface); color: var(--c-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-weight: 700; font-size: 11px; line-height: 1; box-shadow: var(--shadow); align-self: flex-end; }
+.vibe-btn { width: 56px; height: 56px; border-radius: 50%; background: var(--c-surface); color: var(--c-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; font-weight: 700; font-size: 11px; line-height: 1; box-shadow: var(--shadow); align-self: flex-end; } /* gap 2 → 5 px (2026-11-06) */
 .vibe-patch { width: 20px; height: 20px; flex: none; }
 .vibe-patch .vp-seams { stroke: var(--c-surface); }
 .vibe-btn.is-on { background: var(--c-navy); color: var(--c-ink-inverse); }

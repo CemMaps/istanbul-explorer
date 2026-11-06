@@ -31,17 +31,30 @@
           <span data-icon="search"></span>
           <input id="search" type="search" placeholder="Search places, areas, history…" autocomplete="off" enterkeyhint="search" aria-label="Search places, areas, food">
           <button id="search-clear" class="icon-btn small" hidden aria-label="Clear search"><span data-icon="close"></span></button>
+          <button id="btn-near" class="icon-btn small search-locate" aria-label="Show where I am"><span data-icon="locate" data-size="22"></span></button>
         </div>
         <div id="chips" class="chips" role="toolbar" aria-label="Filters"></div>
       </div>
 
       <div id="map" class="map" aria-label="Map"></div>
       <div class="map-buttons">
+        <!-- Vibe: the main map action. The glyph is a tiny patchwork of neighbourhoods in the vibe-map colours,
+             i.e. a preview of what the button does (colour the map by what each area feels like). -->
+        <button id="btn-vibe" class="vibe-btn" aria-label="Neighbourhood vibe map" aria-pressed="false">
+          <svg class="vibe-patch" viewBox="0 0 24 24" aria-hidden="true">
+            <defs><clipPath id="vp-clip"><rect width="24" height="24" rx="7"/></clipPath></defs>
+            <g clip-path="url(#vp-clip)">
+              <path d="M0 0H14L11 10.5L0 12.5Z" style="fill: var(--vibe-bohemian)"/>
+              <path d="M14 0H24V9L11 10.5Z" style="fill: var(--vibe-village)"/>
+              <path d="M0 12.5L11 10.5L13.5 24H0Z" style="fill: var(--vibe-monumental)"/>
+              <path d="M11 10.5L24 9V24H13.5Z" style="fill: var(--vibe-nightlife)"/>
+              <path class="vp-seams" d="M0 12.5L11 10.5L13.5 24M11 10.5L14 0M11 10.5L24 9" fill="none" stroke-width="1.6" stroke-linejoin="round"/>
+            </g>
+          </svg><span>Vibe</span>
+        </button>
         <button id="btn-here" class="fab" aria-label="What's here? Tap, then tap the map" aria-pressed="false"><span data-icon="here" data-size="28"></span></button>
-        <button id="btn-vibe" class="fab fab-vibe" aria-label="Neighbourhood vibe map" aria-pressed="false"><span class="vibe-glyph" aria-hidden="true"><i></i><i></i><i></i><i></i></span></button>
       </div>
       <div class="map-buttons-bottom">
-        <button id="btn-near" class="fab" aria-label="Near me"><span data-icon="locate"></span></button>
         <button id="btn-home" class="fab" aria-label="Centre on our flat"><span data-icon="home"></span></button>
       </div>
       <div id="here-hint" class="map-hint" hidden>Tap anywhere on the map</div>

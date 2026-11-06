@@ -75,6 +75,9 @@ Ignore all other skills, plugins and MCP tools. Built-in browser pane OK for pho
 | Sharing | Snapshot links (no live sync). |
 | Hosting | Later. Likely GitHub Pages (static). Must be https for geolocation. |
 | Place card (2026-11-06) | No tag row (no category/tier/area/vibe/lifestyle tags), no "Best in the morning" box. Under the title: "Open in Google Maps" pill, then `summary` (Wikipedia intro). Tap a photo → full-screen viewer. |
+| Round 7 (2026-11-06) | Filters: Iconic, Food & drink, Viewpoints, Mosques, Churches & synagogues, Palaces & museums, Bazaars, Parks (no Neighbourhoods chip). A place sits on **one day only** (picking another day moves it). No "Getting there" on cards. Google Maps button uses the official pin (`app/icons/google-maps.png`, Commons 2026 icon). My location = icon inside the search bar; Home alone bottom-right. **Vibe** = navy pill with a patchwork-of-neighbourhoods glyph, first in the top-right stack, above What's here. Lifestyle "mixed" = #8F8981. Saved share card over the Golden Horn sunset photo. Map `fadeDuration: 0` + selected pin ignores placement (no blink on close). |
+| Food (2026-11-06) | `scripts/10_food.py`: Wikidata food places (search API) with photos, plus Overture local places as tier **`local`** (icons from z15.4, dots ~1 zoom earlier; not counted in "in view" before that). Chains, fast food and foreign cuisines left out. `kind` = Meyhane/Fish/Kebab/Lokanta/Breakfast/Café/Coffee/Tea/Bakery/Sweets/Ice cream/Bar/Restaurant. |
+| Study area v3 (2026-11-06) | `scripts/09_study_area_v3.py`: concave hull of the sights + shore points (ratio 0.12), padded 900 m, opened 2 km, rounded 2.5 km. ~308 km² (v2 456). Old outline in `data/raw/study_area_v2.geojson`; `qa/shape.html` compares. Vibe areas clipped to it. |
 | Places of worship (2026-11-06) | One category, but each place has `kind` (mosque/church/synagogue/monastery/tomb) for labels; chips "Mosques" and "Churches & synagogues". A chip with no matching data is hidden (Food, until food places exist). |
 | PWA (2026-11-06) | Installable: PNG icons in `app/icons/` (rendered from the SVGs with headless Edge), manifest with maskable icon, apple-touch-icon; More shows "Install the app" (Android prompt / iPhone Share → Add to Home Screen). |
 | Mockup tweaks (agreed) | Google Maps button = quiet secondary with official pin icon; plan step numbers in cobalt (not red); filter chips show an active count. |
@@ -173,7 +176,7 @@ Prominence on the map: `must-see` shows from low zoom; `worth-it` mid zoom; `bon
       Wikidata candidates (670 places, provisional tiers), coverage + bias check, overrides.json.
       Done 2026-11-05: photos (1,335 with credits, `05_photos.py`), Overture 2026-10-21.0 places (`06_overture.py`, 172k POIs),
       area character + lifestyle for 305 mahalles → 123 areas (`07_areas.py`, rules + reasoned overrides, evidence in
-      `data/mahalle_character.csv` for Cem to review). Run order 04 → 05 → 07 → 08 (restore `data/raw/places_before_07.geojson` before re-running 07).
+      `data/mahalle_character.csv` for Cem to review). Run order 04 → 05 → 07 → 08 → 09 → 10 (10a once) → 08 (restore `data/raw/places_before_07.geojson` before re-running 07).
       2026-11-06: `08_finish_places.py` drops 22 non-places (2024 church shooting, a church council, a hoax, demolished buildings,
       consulates, a hotel, schools), adds `kind` and `summary`. The two "Food & drink" entries were pavilions → re-filed; **no food places yet**.
       To do: 12-month pageviews (rate-limited, see lessons), food places, own-words blurbs, best_time/indoor, walks, boat trips.
@@ -226,4 +229,7 @@ Backlog (don't build unless asked): prayer times, food tick-list, Turkish phrase
   Update only the forecast block; don't focus buttons from code.
 - **Wikipedia plain-text extracts can have unclosed brackets** (2026-11-06): e.g. "Mecidiyeköy (Turkish pronunciation: [..] is a …". Strip brackets
   with a depth counter, and when unbalanced cut from the bracket to the main verb (`08_finish_places.py`).
+- **WDQS (SPARQL) times out / rate-limits** (2026-11-06): a `P31/P279*` walk inside `wikibase:box` never returned. Use the
+  Wikidata search API instead: `list=search&srsearch=haswbstatement:P31=Q11707 nearcoord:12km,41.03,28.98`, then wbgetentities.
+- **Inline `style` on SVG beats stylesheet rules** (2026-11-06): use a class when a theme state must restyle a path.
 - **data.ibb.gov.tr timed out from here** (2026-11-05): Istanbul's open-data portal may block non-Turkish IPs; don't depend on it.

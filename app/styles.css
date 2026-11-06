@@ -376,15 +376,6 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .map-buttons-bottom { position: absolute; z-index: 15; right: var(--gutter); bottom: calc(var(--sheet-peek) + 14px); display: flex; flex-direction: column; gap: 10px; transition: bottom .3s var(--ease); }
 .map-buttons { align-items: flex-end; }
 
-/* Vibe button: an Iznik-tile ring around a cobalt tulip */
-.fab-vibe { background:
-    radial-gradient(circle, var(--c-surface) 0 15px, transparent 15.5px),
-    conic-gradient(var(--c-primary) 0 25%, var(--vibe-village) 0 50%, var(--c-accent) 0 75%, var(--vibe-market) 0);
-  color: var(--c-primary); }
-.fab-vibe.is-on { background:
-    radial-gradient(circle, var(--c-navy) 0 15px, transparent 15.5px),
-    conic-gradient(var(--c-primary) 0 25%, var(--vibe-village) 0 50%, var(--c-accent) 0 75%, var(--vibe-market) 0);
-  color: var(--c-ink-inverse); }
 
 /* Legend floats under the vibe button; rows filter the map */
 .vibe-legend { position: relative; z-index: 17; width: 188px; max-height: calc(100dvh - var(--sheet-peek) - var(--tabbar-h) - 240px); min-height: 150px; overflow-y: auto; overscroll-behavior: contain; background: var(--c-surface); border-radius: var(--radius-sm); box-shadow: var(--shadow); padding: 8px; font-size: 13px; }
@@ -469,15 +460,6 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .name-opts { grid-template-columns: 1fr 1fr; }
 
 /* ---------- Round 5 (2026-11-05) ---------- */
-/* Vibe button: a little four-tile mosaic in the area colours */
-.fab-vibe, .fab-vibe.is-on { background: var(--c-surface); color: var(--c-ink); }
-.fab-vibe.is-on { box-shadow: 0 0 0 2px var(--c-primary), var(--shadow-sm); }
-.vibe-glyph { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; width: 20px; height: 20px; transform: rotate(45deg); }
-.vibe-glyph i { border-radius: 3px; }
-.vibe-glyph i:nth-child(1) { background: var(--vibe-bohemian); }
-.vibe-glyph i:nth-child(2) { background: var(--vibe-village); }
-.vibe-glyph i:nth-child(3) { background: var(--vibe-monumental); }
-.vibe-glyph i:nth-child(4) { background: var(--vibe-nightlife); }
 
 /* Vibe legend takes the bottom sheet's place while the vibe map is on */
 .vibe-panel { position: absolute; z-index: 25; left: 0; right: 0; bottom: 0; background: var(--c-surface); border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 -4px 20px color-mix(in srgb, var(--c-ink) calc(var(--shadow-a) * 70%), transparent); padding: 10px var(--gutter) 10px; animation: rise .25s var(--ease); }
@@ -520,3 +502,24 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .credits-tiny { display: block; width: 100%; margin: 28px 0 0; text-align: right; font-size: 10.5px; line-height: 1.4; color: var(--c-ink-2); opacity: .75; }
 #screen-more .page { display: flex; flex-direction: column; }
 #screen-more .credits-tiny { margin-top: auto; padding-top: 28px; }
+
+/* Vibe: the main map action, a navy pill with a patchwork-of-neighbourhoods glyph (2026-11-06) */
+.vibe-btn { height: var(--tap); padding: 0 16px 0 10px; border-radius: 999px; background: var(--c-navy); color: var(--c-ink-inverse); display: inline-flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; box-shadow: var(--shadow); }
+.vibe-patch { width: 26px; height: 26px; flex: none; }
+.vibe-patch .vp-seams { stroke: var(--c-navy); }
+.vibe-btn.is-on { background: var(--c-surface); color: var(--c-ink); box-shadow: 0 0 0 2px var(--c-navy), var(--shadow-sm); }
+.vibe-btn.is-on .vibe-patch .vp-seams { stroke: var(--c-surface); }
+.vibe-btn:active { transform: scale(.97); }
+
+/* My location sits inside the search bar */
+.search { padding-right: 4px; }
+.search-locate { color: var(--c-primary); flex: none; }
+.search-locate.is-on { background: var(--c-primary); color: var(--c-primary-ink); }
+
+/* Saved: share card over an Istanbul sunset */
+.share-card { min-height: 108px; align-items: flex-end; background:
+    linear-gradient(0deg, color-mix(in srgb, var(--c-navy) 62%, transparent) 0%, transparent 70%),
+    var(--share-photo) center 40% / cover no-repeat,
+    linear-gradient(135deg, var(--c-navy) 0%, var(--c-accent) 100%); }
+.share-card::after { display: none; }
+.share-card h2 { text-shadow: 0 1px 10px color-mix(in srgb, var(--c-navy) 60%, transparent); }

@@ -38,7 +38,7 @@ DROP = {
     "mekteb-i-asiret-i-humayun": "a school",
     "surp-hac-ermeni-lisesi": "a school",
 }
-REFILE = {"Food & drink": "Palaces & museums"}
+REFILE = {}  # 2026-11-06: the two pavilions are re-filed in the data already; real food comes from 10_food.py
 
 cands = {c["qid"]: c for c in json.loads((DATA / "work" / "candidates.json").read_text(encoding="utf-8"))}
 
@@ -113,6 +113,10 @@ def trim(text, max_words=48):
     return out
 
 
+def norm_first(name):
+    return re.sub(r"[^\w]", "", name.split()[0].lower())
+
+
 pf = DATA / "places.geojson"
 fc = json.loads(pf.read_text(encoding="utf-8"))
 before = len(fc["features"])
@@ -126,22 +130,30 @@ for f in feats:
     p["category"] = REFILE.get(p["category"], p["category"])
     if p["category"] == "Mosques & churches":
         p["kind"] = kind(p)
-    else:
+    elif p["category"] != "Food & drink":  # food keeps its own kind (10_food.py)
         p.pop("kind", None)
     t = (p.get("wikipedia") or "").replace("_", " ")
     s = trim(ext.get(t, "")) if t else ""
+    # A food place's article must be about it (not its district), and not about a place that has closed.
+    if p["category"] == "Food & drink" and s and (norm_first(p["name"]) not in s.lower() or re.search(r"^[^.]*\b(was|were) a\b", s)):
+        if re.search(r"^[^.]*\b(was|were) a\b", s):
+            p["closed"] = True
+        s = ""
     if len(s.split()) >= 8:
         p["summary"], p["summary_source"] = s, f"wikipedia:{p['wikipedia']}"
         n_wp += 1
     elif p.get("blurb") and not re.search(r"wikimedia|^mahalle|^quarter in|^district of", p["blurb"], re.I):
         b = p["blurb"].strip()
         p["summary"], p["summary_source"] = b[0].upper() + b[1:] + ("" if b.endswith(".") else "."), f"wikidata:{p['wikidata']}"
+    elif (p.get("summary_source") or "").startswith("generated:kind"):
+        pass  # food from Overture: keep the short kind line from 10_food.py
     elif p["category"] == "Neighbourhoods":
         side = "Asian" if p.get("shore") == "asia" else "European"
         p["summary"], p["summary_source"] = f"A neighbourhood of {p['area']}, on the {side} side.", "generated:area"
     else:
         p["summary"], p["summary_source"] = None, None
 
+feats = [f for f in feats if not f["properties"].pop("closed", False)]  # closed food places (Wikipedia says "was a …")
 write_geojson(pf, feats)
 from collections import Counter
 print(f"places: {before} -> {len(feats)} (dropped {before - len(feats)})")

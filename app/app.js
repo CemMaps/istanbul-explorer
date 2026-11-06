@@ -30,7 +30,7 @@ let CFG, THEME, PLACES, BYID, STOPS, FERRIES, AREAS, MAP, FC = null, MOCK = fals
 const catCfg = (id) => CFG.categories.find((c) => c.id === id) || { short: id, icon: "pin" };
 // Short type label: "Church", "Synagogue"… for places of worship (data: `kind`), else the category's short name.
 const typeLabel = (p) => (p.kind && catCfg(p.category).kinds?.[p.kind]) || catCfg(p.category).short;
-const tierRank = { "must-see": 0, "worth-it": 1, bonus: 2 };
+const tierRank = { "must-see": 0, "worth-it": 1, bonus: 2, local: 3 };
 // Wikimedia serves thumbnails at standard widths only; other sizes are slow or refused. Snap up to the next one.
 const THUMB_W = [120, 250, 330, 500, 960, 1280];
 const plainFile = (f) => { try { return decodeURIComponent(f); } catch { return f; } }; // some names arrive URL-encoded
@@ -132,7 +132,9 @@ function inViewPlaces() {
   const ref = S.near || MAP.map.getCenter().toArray();
   return PLACES.features
     // Every place drawn on the map counts (dots included), so the number matches what you see.
-    .filter((f) => !f.properties.dim && b.contains(f.geometry.coordinates))
+    // Food ("local" tier) only counts once you're close enough to see it, unless a filter or search is on.
+    .filter((f) => !f.properties.dim && b.contains(f.geometry.coordinates)
+      && (f.properties.tier !== "local" || filterActive() || MAP.map.getZoom() >= CFG.tiers.local.minzoom - 1.2))
     .map((f) => ({ p: f.properties, c: f.geometry.coordinates, d: distM(ref, f.geometry.coordinates) }))
     .sort((a, b) => (S.near ? a.d - b.d : tierRank[a.p.tier] - tierRank[b.p.tier] || b.p.score - a.p.score));
 }
@@ -210,26 +212,7 @@ document.addEventListener("click", (e) => {
 }, true);
 
 // ---------- place card ----------
-function gettingThere(coord) {
-  const { maxWalkM, metersPerMin } = CFG.gettingThere;
-  const best = {};
-  for (const s of STOPS.features) {
-    const d = distM(coord, s.geometry.coordinates);
-    if (d > maxWalkM) continue;
-    const m = s.properties.mode;
-    if (!best[m] || d < best[m].d) best[m] = { d, s: s.properties };
-  }
-  const rows = Object.keys(best).sort((a, b) => best[a].d - best[b].d).slice(0, 3);
-  const label = { tram: "Tram", metro: "Metro", funicular: "Funicular", ferry: "Ferry pier", rail: "Train" };
-  const ico = { tram: "tram", metro: "train", funicular: "tram", ferry: "ship", rail: "train" };
-  if (!rows.length) return `<div class="go-row"><span class="go-ico" style="--mode: var(--c-ink-2)">${icon("car", 18)}</span><span><b>Taxi is easiest</b><br><small>No station or pier within a ${Math.round(maxWalkM / metersPerMin)}-min walk</small></span></div>`;
-  return rows.map((m) => {
-    const x = best[m];
-    return `<div class="go-row"><span class="go-ico" style="--mode: var(--transit-${m})">${icon(ico[m], 18)}</span>
-      <span><b>${esc(x.s.name)}</b> <small>${label[m]}${x.s.lines ? ` · ${esc(x.s.lines)}` : ""}</small><br><small>${Math.max(1, Math.round(x.d / metersPerMin))} min walk · ${fmtDist(x.d)}</small></span></div>`;
-  }).join("");
-}
-const closeBy = (id, coord) => PLACES.features.filter((f) => f.properties.id !== id && f.properties.tier !== "bonus")
+const closeBy = (id, coord) => PLACES.features.filter((f) => f.properties.id !== id && !["bonus", "local"].includes(f.properties.tier))
   .map((f) => ({ p: f.properties, d: distM(coord, f.geometry.coordinates) })).sort((a, b) => a.d - b.d).slice(0, 3);
 function dayButtons(id) {
   return CFG.trip.days.map((d) => { const on = store.inDay(id, d.id);
@@ -271,13 +254,11 @@ function openPlace(id) {
     <div class="place-body">
       <h1 id="place-name">${esc(p.name)}</h1>
       ${p.name_tr && p.name_tr !== p.name ? `<div class="name-tr" lang="tr">${esc(p.name_tr)}</div>` : ""}
-      <a class="gmaps" href="https://www.google.com/maps/search/?api=1&query=${coord[1]},${coord[0]}" target="_blank" rel="noopener">${icon("pin", 18)} Open in Google Maps</a>
+      <a class="gmaps" href="https://www.google.com/maps/search/?api=1&query=${coord[1]},${coord[0]}" target="_blank" rel="noopener"><img src="icons/google-maps.png" alt="" width="20" height="20"> Open in Google Maps</a>
       ${about ? `<p class="blurb">${esc(about)}</p>` : ""}
       ${p.tip ? `<p class="blurb">${esc(p.tip)}</p>` : ""}
       <h2 class="section-title">Add to a day</h2>
       <div class="days" id="days">${dayButtons(id)}</div>
-      <h2 class="section-title">Getting there</h2>
-      <div class="getting">${gettingThere(coord)}</div>
       ${near.length ? `<h2 class="section-title">Close by</h2><div class="nearby">${near.map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false })}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${Math.max(1, Math.round(x.d / 80))} min walk</div></button>`).join("")}</div>` : ""}
     </div>`;
   el.hidden = false;
@@ -312,14 +293,18 @@ $("#place").addEventListener("click", (e) => {
   const b = e.target.closest("[data-day]");
   if (!b) return;
   const id = S.selected, day = b.dataset.day;
+  const prev = store.dayOf(id);
   const added = store.toggleDay(id, day);
   syncHearts(id);
   $("#days").innerHTML = dayButtons(id);
   $(`[data-day="${day}"]`, $("#days"))?.classList.add("pop");
   const r = store.activeRoute(day);
   const label = `${dayCfg(day).label}${store.routesOf(day).length > 1 && r ? ` · ${r.name}` : ""}`;
-  toast(added ? `Added to ${label}` : `Removed from ${dayCfg(day).label}`, () => {
-    store.toggleDay(id, day); $("#days").innerHTML = dayButtons(id);
+  const moved = added && prev && prev !== day;
+  toast(moved ? `Moved to ${label}` : added ? `Added to ${label}` : `Removed from ${dayCfg(day).label}`, () => {
+    store.toggleDay(id, day);
+    if (moved) store.toggleDay(id, prev);
+    $("#days").innerHTML = dayButtons(id);
   });
 });
 // Share one place: a link that opens the app on its card (plus the phone's share sheet when there is one).
@@ -652,7 +637,8 @@ function renderSaved() {
   let top = "", ids = [], badgeFor = () => "";
   if (S.savedTab === "mine") {
     ids = me.hearts.filter((id) => BYID[id]);
-    top = `<section class="share-card">
+    // Golden Horn at sunset (same Commons photo as the splash; credited on the credits list).
+    top = `<section class="share-card" style="--share-photo: url('${photoUrl("Golden Horn Metro Bridge at sunset.jpg", 960)}')">
         <h2>Share your saved places</h2>
         <button class="btn-share" id="share-btn">${icon("share", 18)} Share${ids.length ? ` · ${ids.length}` : ""}</button>
       </section>`;

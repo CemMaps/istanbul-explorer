@@ -66,6 +66,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
     minZoom: config.map.minZoom, maxZoom: config.map.maxZoom,
     attributionControl: false, // credit shown as a small line on the map + full credits screen (see app.js)
     pitchWithRotate: false, dragRotate: false,
+    fadeDuration: 0, // no symbol fade: pins hidden by a collision used to blink back in after closing a card
   });
   map.touchZoomRotate.disableRotation();
   await new Promise((r) => map.on("load", r));
@@ -140,16 +141,17 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   // hidden by a collision, its dot still shows.
   const catColor = ["match", ["get", "category"], ...config.categories.flatMap((c) => [c.id, cssVar(catVar(c.id))]), cssVar("--c-ink-2")];
   for (const [tier, t] of tiers) {
-    const from = Math.max(config.map.minZoom ?? 9, (t.minzoom || 10) - (tier === "bonus" ? 2.6 : 3));
+    // Food ("local") dots only appear about one zoom level before their icons, so the city view stays calm.
+    const from = Math.max(config.map.minZoom ?? 9, (t.minzoom || 10) - (tier === "local" ? 1.2 : tier === "bonus" ? 2.6 : 3));
     const to = Math.max(t.minzoom || 0, from + 1);
     map.addLayer({ id: `dots-${tier}`, type: "circle", source: "places", minzoom: from,
       filter: ["all", ["==", ["get", "tier"], tier], ["!=", ["get", "asLabel"], true]],
       paint: {
         "circle-color": catColor,
         // Three clear sizes: must-see dots biggest, bonus smallest; they grow gently as you zoom in.
-        "circle-radius": ["interpolate", ["linear"], ["zoom"], from, { "must-see": 4, "worth-it": 2.6, bonus: 1.8 }[tier], to + 1, { "must-see": 5, "worth-it": 3.8, bonus: 3 }[tier]],
+        "circle-radius": ["interpolate", ["linear"], ["zoom"], from, { "must-see": 4, "worth-it": 2.6, bonus: 1.8, local: 1.6 }[tier], to + 1, { "must-see": 5, "worth-it": 3.8, bonus: 3, local: 2.6 }[tier]],
         "circle-stroke-color": bg, "circle-stroke-width": ["interpolate", ["linear"], ["zoom"], from, 0.6, to, 1.2],
-        "circle-opacity": tier === "bonus" ? 0.7 : 0.95,
+        "circle-opacity": tier === "bonus" || tier === "local" ? 0.7 : 0.95,
         "circle-stroke-opacity": 1,
       } });
     dotLayers.push(`dots-${tier}`);
@@ -157,7 +159,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   for (const [tier, t] of tiers) {
     const isTier = ["==", ["get", "tier"], tier];
     const notLabelCat = ["!=", ["get", "asLabel"], true];
-    const labelFrom = tier === "must-see" ? 13 : tier === "worth-it" ? 15 : 16.2;
+    const labelFrom = tier === "must-see" ? 13 : tier === "worth-it" ? 15 : tier === "local" ? 17 : 16.2;
     map.addLayer({
       id: `pins-${tier}`, type: "symbol", source: "places", minzoom: t.minzoom,
       filter: ["all", isTier, notLabelCat],
@@ -190,7 +192,7 @@ export async function createMap({ container, theme, config, data, onPlace }) {
 
   // Selected place: filled, bigger, always labelled.
   map.addLayer({ id: "selected", type: "symbol", source: "places", filter: ["==", ["get", "id"], ""],
-    layout: { "icon-image": ["concat", "pin-", ["get", "catslug"], "-sel"], "icon-size": 1.15, "icon-allow-overlap": true,
+    layout: { "icon-image": ["concat", "pin-", ["get", "catslug"], "-sel"], "icon-size": 1.15, "icon-allow-overlap": true, "icon-ignore-placement": true, "text-ignore-placement": true,
               "text-field": ["get", "name"], "text-font": FONT_BOLD, "text-size": 13, "text-offset": [0, 1.7], "text-anchor": "top",
               "text-allow-overlap": true },
     paint: { "text-color": cssVar("--c-ink-inverse"), "text-halo-color": navy, "text-halo-width": 6 } });

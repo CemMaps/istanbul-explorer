@@ -75,6 +75,8 @@ export const store = {
     const r = store.activeRoute(day, true);
     const inAny = state.routes.filter((x) => x.day === day && x.ids.includes(id));
     if (inAny.length) { inAny.forEach((x) => (x.ids = x.ids.filter((y) => y !== id))); save(); return false; }
+    // One day per place: adding it to this day takes it off any other day.
+    state.routes.forEach((x) => { if (x.day !== day) x.ids = x.ids.filter((y) => y !== id); });
     r.ids.push(id);
     state.addedAt[id] = Date.now();
     if (!state.hearts.includes(id)) state.hearts.push(id);

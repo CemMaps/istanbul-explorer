@@ -1,6 +1,6 @@
 import { loadTheme, catVar } from "./theme.js";
 import { icon } from "./icons.js";
-import { createMap, createMiniMap } from "./map.js";
+import { createMap } from "./map.js";
 import { store } from "./store.js";
 import { tripStatus, sunTimes, forecast, fmtTime, istanbulToday, istMinutes } from "./sky.js";
 import { order, legMode, legsGeometry } from "./routes.js";
@@ -374,9 +374,16 @@ $("#open-credits").addEventListener("click", showCredits);
 function renderBadge() {
   $("#splash-sub").textContent = `${badgeText(CFG)} · weather and sunsets`;
 }
+// The day's main route as an ordered list of names (for the splash day pop-up).
+function dayPlan(day) {
+  const r = BYID ? store.mainRoute(day) : null; // data may still be loading
+  if (!r) return [];
+  const { seq } = ordered(r);
+  return seq.map((x) => x.p.name);
+}
 async function showSplash(after) {
   const el = $("#splash");
-  renderSplash(el, { cfg: CFG, theme: THEME, fc: FC, people: CFG.trip.people, onGo: after });
+  renderSplash(el, { cfg: CFG, theme: THEME, fc: FC, people: CFG.trip.people, onGo: after, dayPlan });
   if (!FC) { await getForecast(); if (!el.hidden && !el.classList.contains("is-leaving")) updateSplashForecast(el, { cfg: CFG, fc: FC }); }
 }
 $("#open-splash").addEventListener("click", () => showSplash());
@@ -673,7 +680,6 @@ $("#screen-saved").addEventListener("click", (e) => {
 // ---------- Routes (was "Plan") ----------
 // A route = the places you've added to a day. The app orders them nearest-first from the start
 // (our flat by default), and between stops says only how you get there: Walk · 8 min / Tram / Ferry / Taxi.
-let MINI = null;
 const LEG_ICON = { walk: "walk", tram: "tram", metro: "train", rail: "train", funicular: "tram", ferry: "ship", taxi: "car" };
 const rcVar = (r) => `var(--rc-${(r.ci ?? 0) % 5})`;
 const rcHex = (r) => getComputedStyle(document.documentElement).getPropertyValue(`--rc-${(r.ci ?? 0) % 5}`).trim();
@@ -727,108 +733,118 @@ async function renderPlan() {
   S.planDay = S.planDay || (st.phase === "during" ? CFG.trip.days[st.dayIndex - 1].id : CFG.trip.days[0].id);
   const mine = S.planWho === "me";
   const dayRoutes = (day) => (mine ? store.routesOf(day) : othersRoutes(S.planWho).filter((r) => r.day === day));
+  // Day switcher: a calm segmented control (short day + date), a dot when the day has stops.
   $("#plan-tabs").innerHTML = CFG.trip.days.map((d) => {
     const n = dayRoutes(d.id).reduce((s, r) => s + r.ids.length, 0);
-    return `<button class="day-tab" role="tab" data-plan="${d.id}" aria-selected="${d.id === S.planDay}">${d.label}${n ? `<small>${n}</small>` : ""}</button>`;
+    const dt = new Date(d.date + "T12:00:00");
+    return `<button class="seg" role="tab" data-plan="${d.id}" aria-selected="${d.id === S.planDay}" aria-label="${d.label}${n ? `, ${n} stops` : ""}">
+      <b>${d.label.slice(0, 3)}</b><small>${dt.getDate()} Nov</small>${n ? "<i></i>" : ""}</button>`;
   }).join("");
   const d = dayCfg(S.planDay);
   const routes = dayRoutes(d.id);
   let r = mine ? store.activeRoute(d.id, true) : routes[0];
   if (!mine && S.planRoute && routes.some((x) => x.id === S.planRoute)) r = routes.find((x) => x.id === S.planRoute);
 
-  // route chips: one per alternative, plus "+ Another route"
-  $("#route-chips").innerHTML = (mine ? store.routesOf(d.id) : routes).map((x) =>
-    `<button class="route-chip" role="tab" data-route="${esc(x.id)}" aria-selected="${x.id === r?.id}" style="--rc:${rcVar(x)}"><i></i>${esc(x.name)}</button>`).join("")
-    + (mine && store.routesOf(d.id).length < 3 ? `<button class="route-chip add" data-route-new>${icon("plus", 16)} Another route</button>` : "");
+  // Alternatives only show when there is more than one; the first is the day's main route (shown on the splash).
+  const list = mine ? store.routesOf(d.id) : routes;
+  $("#route-chips").hidden = list.length < 2;
+  $("#route-chips").innerHTML = list.map((x, i) =>
+    `<button class="route-chip" role="tab" data-route="${esc(x.id)}" aria-selected="${x.id === r?.id}" style="--rc:${rcVar(x)}"><i></i>${esc(x.name)}${i === 0 ? `<em>Main</em>` : ""}</button>`).join("");
 
   if (!r) {
-    $("#route-tools").innerHTML = ""; $("#plan-body").innerHTML = `<p class="empty">Nothing for ${d.label} in ${esc(S.planWho)}'s snapshot.</p>`;
-    $("#plan-tray").innerHTML = ""; showMini(null); return;
+    $("#route-head").innerHTML = `<div class="rh-txt"><h1 class="rh-title">${esc(d.label)}</h1></div>`;
+    $("#plan-body").innerHTML = `<p class="empty">Nothing for ${d.label} in ${esc(S.planWho)}'s snapshot.</p>`;
+    $("#plan-tray").innerHTML = ""; return;
   }
   const { st: start, seq } = ordered(r);
-  const startOpts = [["home", "Our flat"], ...r.ids.filter((id) => BYID[id]).map((id) => [id, BYID[id].properties.name])];
-  $("#route-tools").innerHTML = `
-    <label class="start-pick" aria-label="Where this route starts"><span class="sp-lbl">${icon("pin", 16)}From</span>${icon("chevDown", 16)}
-      <select id="route-start" ${mine ? "" : "disabled"}>${startOpts.map(([k, l]) => `<option value="${esc(k)}" ${(r.start || "home") === k ? "selected" : ""}>${esc(l)}</option>`).join("")}</select></label>
-    ${mine ? `<label class="switch"><input type="checkbox" id="route-onmap" ${r.onMap ? "checked" : ""}><span class="sw"></span>On map</label>
-      <button class="icon-btn small" id="route-share" aria-label="Share my routes and picks">${icon("share", 18)}</button>
-      <button class="icon-btn small" id="route-more" aria-label="Rename or delete ${esc(r.name)}">${icon("more", 20)}</button>` : ""}`;
+  const startOpts = [["home", "our flat"], ...r.ids.filter((id) => BYID[id]).map((id) => [id, BYID[id].properties.name])];
+  const stopsTxt = seq.length ? `${seq.length} stop${seq.length > 1 ? "s" : ""}` : "No stops yet";
+  const startName = startOpts.find(([k]) => k === (r.start || "home"))?.[1] || "our flat";
+  $("#route-head").innerHTML = `
+    <div class="rh-txt">
+      <h1 class="rh-title">${esc(d.label)}</h1>
+      <label class="rh-sub">${stopsTxt} · from <span class="rh-start">${esc(startName)}${mine ? icon("chevDown", 14) : ""}</span>
+        <select id="route-start" ${mine ? "" : "disabled"} aria-label="Where this route starts">${startOpts.map(([k, l]) => `<option value="${esc(k)}" ${(r.start || "home") === k ? "selected" : ""}>${esc(l[0].toUpperCase() + l.slice(1))}</option>`).join("")}</select></label>
+    </div>
+    ${seq.length ? `<button class="rh-map ${r.onMap ? "is-on" : ""}" id="route-onmap" aria-pressed="${!!r.onMap}">${icon(r.onMap ? "check" : "pin", 16)}${r.onMap ? "On map" : "Show on map"}</button>` : ""}
+    ${mine ? `<button class="icon-btn small rh-more" id="route-more" aria-label="Route options">${icon("more", 20)}</button>` : ""}`;
 
   const legRow = (a, b) => { const m = legMode(a, b, STOPS.features);
-    return `<div class="leg leg-${m.mode}">${icon(LEG_ICON[m.mode], 16)}<span>${esc(m.label)}</span></div>`; };
-  const startRow = start.home
-    ? `<div class="stop start-stop"><div class="stop-num"><b>S</b></div><div class="stop-card"><span class="home-dot">${icon("home", 20)}</span><div class="stop-txt"><div class="stop-name">Our flat</div><div class="stop-why">Cihangir · start</div></div></div></div>`
-    : `<div class="stop start-stop"><div class="stop-num"><b>S</b></div><div class="stop-card" data-open-x="${esc(start.id)}" role="button" tabindex="0">${thumb(start.p, { pill: false, heart: false })}<div class="stop-txt"><div class="stop-name">${esc(start.p.name)}</div><div class="stop-why">Start</div></div></div></div>`;
+    return `<div class="leg leg-${m.mode}">${icon(LEG_ICON[m.mode], 15)}<span>${esc(m.label)}</span></div>`; };
+  const startRow = `<div class="stop start-stop"><div class="stop-num"><b>${icon(start.home ? "home" : "pin", 14)}</b></div>
+    <div class="stop-row"${start.home ? "" : ` data-open-x="${esc(start.id)}" role="button" tabindex="0"`}><div class="stop-txt"><div class="stop-name">${start.home ? "Our flat" : esc(start.p.name)}</div><div class="stop-why">Start${start.home ? " · Cihangir" : ""}</div></div></div></div>`;
   let prev = start;
   const body = seq.map((s, i) => {
     const row = `${legRow(prev, s)}<div class="stop"><div class="stop-num"><b>${i + 1}</b></div>
-      <div class="stop-card" data-open-x="${esc(s.id)}" role="button" tabindex="0">${thumb(s.p, { pill: false, heart: false })}
-        <div class="stop-txt"><div class="stop-name">${esc(s.p.name)}</div><div class="stop-why">${esc(s.p.mahalle || s.p.area)}</div></div>
-        ${mine ? `<button class="stop-x" data-unplan="${esc(s.id)}" aria-label="Remove ${esc(s.p.name)}">${icon("close", 18)}</button>` : ""}
+      <div class="stop-row" data-open-x="${esc(s.id)}" role="button" tabindex="0">${thumb(s.p, { pill: false, heart: false })}
+        <div class="stop-txt"><div class="stop-name">${esc(s.p.name)}</div><div class="stop-why">${esc(typeLabel(s.p))} · ${esc(s.p.mahalle || s.p.area)}</div></div>
+        ${mine ? `<button class="stop-x" data-unplan="${esc(s.id)}" aria-label="Remove ${esc(s.p.name)}">${icon("close", 16)}</button>` : ""}
       </div></div>`;
     prev = s;
     return row;
   }).join("");
   $("#plan-body").style.setProperty("--rc", rcVar(r));
   $("#plan-body").innerHTML = `${mine ? "" : `<p class="readonly-note">${esc(S.planWho)}'s route, from their link of ${fmtAsOf(all[S.planWho].asOf)}. Read-only.</p>`}
-    ${startRow}${body || `<p class="empty">Nothing on this route yet.${mine ? " Open a place and tap a day, or add from your saved places below." : ""}</p>`}`;
+    ${startRow}${body}${seq.length ? "" : `<p class="empty rh-empty">${mine ? `Open a place and tap ${esc(d.label)}, or add one of your saved places below. We put them in a sensible order.` : "Nothing here yet."}</p>`}`;
 
   // Saved places that aren't on any route yet: one tap adds them to this route.
   const free = mine ? store.get().hearts.filter((id) => BYID[id] && !store.dayOf(id)) : [];
-  $("#plan-tray").innerHTML = free.length ? `<div class="tray"><h2>Saved, not in a route yet</h2><div class="tray-chips">${free.map((id) =>
-    `<button class="tray-chip" data-plan-add="${esc(id)}" aria-label="Add ${esc(BYID[id].properties.name)} to ${esc(r.name)}">${icon("plus", 18)}${esc(BYID[id].properties.name)}</button>`).join("")}</div></div>` : "";
+  $("#plan-tray").innerHTML = free.length ? `<div class="tray"><h2>Add from your saved places</h2><div class="tray-chips">${free.map((id) =>
+    `<button class="tray-chip" data-plan-add="${esc(id)}" aria-label="Add ${esc(BYID[id].properties.name)} to ${esc(d.label)}">${icon("plus", 16)}${esc(BYID[id].properties.name)}</button>`).join("")}</div></div>` : "";
 
   S.planRoute = r.id;
-  showMini(r);
 }
 
-async function showMini(r) {
-  const empty = $("#route-map-empty");
-  if (!MINI) MINI = await createMiniMap({ container: "route-map", theme: THEME, config: CFG });
-  MINI.map.resize();
-  if (!r || !r.ids.length) {
-    MINI.setRoutes(fc([]), fc([]));
-    empty.hidden = false; empty.textContent = "Add places to this day and they'll appear here in order.";
-    MINI.map.jumpTo({ center: CFG.map.home, zoom: 13 });
-    return;
-  }
-  empty.hidden = true;
+// "Show on map": switch the route on and jump to Explore, framed on it.
+async function showRouteOnExplore(r) {
+  store.setOnMap(r.id, true);
+  await renderMapRoutes();
+  showScreen("explore");
+  setSheet("closed"); // room for the route; the list is one tap away
   const f = await routeFeatures(r);
-  if (S.planRoute !== r.id) return; // user moved on
-  MINI.setRoutes(fc(f.lines), fc(f.stops));
   const b = new maplibregl.LngLatBounds();
   [...f.bounds, ...f.lines.flatMap((l) => l.geometry.coordinates)].forEach((c) => b.extend(c));
-  MINI.map.fitBounds(b, { padding: 34, maxZoom: 15.5, duration: 0 });
+  MAP.map.fitBounds(b, { padding: { top: 40, bottom: 60, left: 40, right: 80 }, maxZoom: 15.5, duration: 700 }); // on top of the map's own padding
 }
 
 $("#plan-tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-plan]"); if (b) { S.planDay = b.dataset.plan; S.planRoute = null; renderPlan(); } });
 $("#plan-who").addEventListener("change", (e) => { S.planWho = e.target.value; S.planRoute = null; renderPlan(); });
 $("#screen-plan").addEventListener("change", (e) => {
   if (e.target.id === "route-start") { store.setStart(S.planRoute, e.target.value); renderPlan(); renderMapRoutes(); }
-  if (e.target.id === "route-onmap") {
-    const onCount = store.routes().filter((x) => x.onMap).length;
-    if (e.target.checked && onCount >= CFG.routes.max) { e.target.checked = false; return toast(`Up to ${CFG.routes.max} routes on the map at once`); }
-    store.setOnMap(S.planRoute, e.target.checked); renderMapRoutes();
-    if (e.target.checked) toast("Showing on the Explore map");
-  }
 });
 $("#screen-plan").addEventListener("click", (e) => {
   const chip = e.target.closest("[data-route]");
   if (chip) { if (S.planWho === "me") store.setActive(S.planDay, chip.dataset.route); S.planRoute = chip.dataset.route; return renderPlan(); }
-  if (e.target.closest("[data-route-new]")) { store.newRoute(S.planDay); return renderPlan(); }
-  if (e.target.closest("#route-share")) {
-    if (!store.get().hearts.length) return toast("Add a few places first");
-    shareMyPicks().then((res) => { if (res === "copied") toast("Link copied. Paste it in the family chat."); });
-    return;
+  if (e.target.closest("#route-onmap")) {
+    const r = store.route(S.planRoute);
+    if (!r) return;
+    if (r.onMap) { store.setOnMap(r.id, false); renderMapRoutes(); return renderPlan(); }
+    if (store.routes().filter((x) => x.onMap).length >= CFG.routes.max) return toast(`Up to ${CFG.routes.max} routes on the map at once`);
+    return showRouteOnExplore(r);
   }
   if (e.target.closest("#route-more")) {
     const r = store.route(S.planRoute);
+    const sameDay = store.routesOf(r.day);
+    const isMain = sameDay[0]?.id === r.id;
     openDialog(`<h2>${esc(r.name)}</h2>
+      <div class="menu-list">
+        ${!isMain ? `<button class="menu-item" id="route-main">${icon("check", 20)}<span>Make this the main route<small>Shown first, and on the splash screen</small></span></button>` : ""}
+        ${sameDay.length < 3 ? `<button class="menu-item" id="route-new">${icon("plus", 20)}<span>Plan another route for ${esc(dayCfg(r.day).label)}<small>An alternative, e.g. for a rainy day</small></span></button>` : ""}
+        <button class="menu-item" id="route-share">${icon("share", 20)}<span>Share my routes and picks</span></button>
+      </div>
       <form class="name-other" id="rename-form"><input id="rename-input" value="${esc(r.name)}" maxlength="30" aria-label="Route name"><button class="btn-primary">Rename</button></form>
       <button class="btn-secondary danger" id="route-delete" style="margin-top:12px">Delete this route</button>`);
-    $("#rename-form").addEventListener("submit", (ev) => { ev.preventDefault(); store.renameRoute(r.id, $("#rename-input").value.trim()); $("#dialog").hidden = true; renderPlan(); renderMapRoutes(); });
+    const done = () => { $("#dialog").hidden = true; renderPlan(); renderMapRoutes(); };
+    $("#route-main")?.addEventListener("click", () => { store.makeMain(r.id); done(); toast(`${r.name} is now the main route`); });
+    $("#route-new")?.addEventListener("click", () => { const n = store.newRoute(r.day); S.planRoute = n.id; done(); });
+    $("#route-share").addEventListener("click", () => {
+      $("#dialog").hidden = true;
+      if (!store.get().hearts.length) return toast("Add a few places first");
+      shareMyPicks().then((res) => { if (res === "copied") toast("Link copied. Paste it in the family chat."); });
+    });
+    $("#rename-form").addEventListener("submit", (ev) => { ev.preventDefault(); store.renameRoute(r.id, $("#rename-input").value.trim()); done(); });
     $("#route-delete").addEventListener("click", () => {
-      const gone = store.deleteRoute(r.id); $("#dialog").hidden = true; S.planRoute = null; renderPlan(); renderMapRoutes();
+      const gone = store.deleteRoute(r.id); S.planRoute = null; done();
       toast(`Deleted ${gone.name}`, () => { store.restoreRoute(gone); renderPlan(); renderMapRoutes(); });
     });
     return;
@@ -860,7 +876,6 @@ async function switchTheme() {
   const camera = { center: MAP.map.getCenter(), zoom: MAP.map.getZoom(), bearing: MAP.map.getBearing() };
   const vibe = S.vibe;
   MAP.map.remove();
-  if (MINI) { MINI.map.remove(); MINI = null; }
   await buildMap(camera);
   refreshPlaces();
   if (vibe) { S.vibe = null; setVibe(vibe); } else setSheet(S.sheet);

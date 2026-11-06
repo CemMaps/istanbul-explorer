@@ -5,7 +5,8 @@ import { tripStatus, sunTimes, fmtTime } from "./sky.js";
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-const SPLASH_PHOTO = "Golden Horn Metro Bridge at sunset.jpg";
+// Süleymaniye from above, the Golden Horn and Galata behind it, on a sunny day (Commons; credited via places.geojson).
+const SPLASH_PHOTO = "SüleymaniyeMosqueIstanbul (cropped).jpg";
 const fmtDay =(iso) => { const d = new Date(iso + "T12:00:00+03:00"); return `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`; };
 
 // Copy by phase. "level" drives how celebratory it looks (0 calm → 3 party).
@@ -21,10 +22,10 @@ export function mood(cfg) {
   }
   const d = st.daysToGo;
   if (d === 1) return { st, level: 3, big: "Tomorrow!", unit: "", line: "" };
-  if (d <= 7) return { st, level: 3, big: String(d), unit: "days to go", line: "" };
-  if (d <= 14) return { st, level: 2, big: String(d), unit: "days to go", line: "" };
-  if (d <= 30) return { st, level: 1, big: String(d), unit: "days to go", line: "" };
-  return { st, level: 0, big: String(d), unit: "days to go", line: "" };
+  if (d <= 7) return { st, level: 3, big: String(d), unit: "days to go!", line: "" };
+  if (d <= 14) return { st, level: 2, big: String(d), unit: "days to go!", line: "" };
+  if (d <= 30) return { st, level: 1, big: String(d), unit: "days to go!", line: "" };
+  return { st, level: 0, big: String(d), unit: "days to go!", line: "" };
 }
 
 export function badgeText(cfg) {
@@ -53,9 +54,9 @@ function forecastHtml(cfg, fc, m) {
     const w = fc?.days?.[d.date];
     const sun = sunTimes(d.date, cfg.map.home);
     const today = m.st.phase === "during" && m.st.today === d.date;
-    return `<li class="sp-day ${today ? "is-today" : ""}">
+    return `<li><button class="sp-day ${today ? "is-today" : ""}" data-day="${d.id}" aria-expanded="false" aria-label="${d.label}: the plan and weather">
       <span class="sp-dow">${d.label.slice(0, 3)}</span><span class="sp-date">${fmtDay(d.date)}</span>
-      ${w ? `${icon(w.icon, 30)}<span class="sp-temp">${w.max}°<small>${w.min}°</small></span><span class="sp-rain">${w.rain}% rain</span>` : ""}</li>`;
+      ${w ? `${icon(w.icon, 30)}<span class="sp-temp">${w.max}°<small>${w.min}°</small></span><span class="sp-rain">${w.rain}% rain</span>` : ""}</button></li>`;
   }).join("");
   const note = fc?.sample ? `<span class="tag-sample">Sample forecast</span>`
     : fc?.status === "too-early" || !fc ? "The forecast will appear about two weeks before the trip."
@@ -63,13 +64,36 @@ function forecastHtml(cfg, fc, m) {
   return `<ul class="sp-days">${cells}</ul><p class="sp-note">${note}</p>`;
 }
 
+// Countdown line: one quiet tick per day still to go, then the four trip days as a brighter block.
+function countLine(cfg, m) {
+  if (m.st.phase !== "before" || m.st.daysToGo > 60) return "";
+  const n = m.st.daysToGo;
+  const ticks = Array.from({ length: n }, (_, i) => `<i${i === 0 ? ' class="now"' : ""}></i>`).join("");
+  return `<div class="sp-count" role="img" aria-label="${n} days to go, then ${cfg.trip.days.length} days in Istanbul">
+    <div class="sc-line">${ticks}<b style="flex:${cfg.trip.days.length}"></b></div>
+    <div class="sc-lbl"><span>Today</span><span>${fmtDay(cfg.trip.days[0].date)}</span></div></div>`;
+}
+
+// Day pop-up: the main route's stops in order, plus that day's weather and sunset. Nothing else.
+function dayPop(cfg, fc, d, names) {
+  const w = fc?.days?.[d.date];
+  const sun = sunTimes(d.date, cfg.map.home);
+  const wx = w ? `<span>${icon(w.icon, 18)}${w.max}° / ${w.min}° · ${w.rain}% rain</span>` : "";
+  const list = names.length ? `<ol class="dp-list">${names.map((n) => `<li>${esc(n)}</li>`).join("")}</ol>`
+    : `<p class="dp-empty">Nothing planned yet. Add places to ${esc(d.label)} in Routes.</p>`;
+  return `<div class="dp-head"><b>${esc(d.label)}</b>${wx}<span>${icon("sunset", 18)}Sunset ${fmtTime(sun.sunset)}</span></div>${list}`;
+}
+
 // When the forecast arrives, only the forecast block changes (the button stays, so a tap is never lost).
 export function updateSplashForecast(el, { cfg, fc }) {
   const box = el.querySelector(".sp-fc");
+  el._fc = fc;
+  const pop = el.querySelector("#sp-pop");
+  if (pop) pop.hidden = true;
   if (box) box.innerHTML = forecastHtml(cfg, fc, mood(cfg));
 }
 
-export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
+export function renderSplash(el, { cfg, theme, fc, people, onGo, dayPlan }) {
   const m = mood(cfg);
   el.dataset.level = m.level;
   // Sunset over the Golden Horn (Wikimedia Commons; credited on the Photo credits screen via places.geojson),
@@ -84,12 +108,28 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo }) {
         <h1 class="sp-big">${esc(m.big)}</h1>
         ${m.unit ? `<div class="sp-unit">${esc(m.unit)}</div>` : ""}
         ${m.line ? `<p class="sp-line">${esc(m.line)}</p>` : ""}
+        ${countLine(cfg, m)}
       </div>
-      <div class="sp-fc">${forecastHtml(cfg, fc, m)}</div>
-      <button class="sp-go" id="sp-go">Explore Istanbul ${icon("chevronRight", 20)}</button>
+      <div class="sp-fc-wrap"><div class="sp-pop" id="sp-pop" hidden></div><div class="sp-fc">${forecastHtml(cfg, fc, m)}</div></div>
+      <button class="sp-go" id="sp-go">${icon("compass", 22)}Explore Istanbul</button>
     </div>`;
   el.hidden = false;
   el.classList.remove("is-leaving");
+  // Tap a day: a small pop-up above the cards with that day's plan; tap it again (or anywhere) to close.
+  el.querySelector(".sp-fc").onclick = (e) => {
+    const b = e.target.closest("[data-day]");
+    const pop = el.querySelector("#sp-pop");
+    const open = b && b.getAttribute("aria-expanded") !== "true";
+    el.querySelectorAll("[data-day]").forEach((x) => x.setAttribute("aria-expanded", "false"));
+    if (!open) { pop.hidden = true; return; }
+    const d = cfg.trip.days.find((x) => x.id === b.dataset.day);
+    pop.innerHTML = dayPop(cfg, el._fc, d, dayPlan?.(d.id) || []);
+    const i = cfg.trip.days.indexOf(d);
+    pop.style.setProperty("--arrow", `${((i + 0.5) / cfg.trip.days.length) * 100}%`);
+    pop.hidden = false;
+    b.setAttribute("aria-expanded", "true");
+  };
+  el._fc = fc;
   const go = el.querySelector("#sp-go");
   go.addEventListener("click", () => {
     el.classList.add("is-leaving");

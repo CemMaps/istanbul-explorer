@@ -30,7 +30,7 @@
     "must-see": { "minzoom": 0, "size": 1.0, "label": "Must-see" },
     "worth-it": { "minzoom": 12.2, "size": 0.8, "label": "Worth it" },
     "bonus": { "minzoom": 13.6, "size": 0.62, "label": "Bonus" },
-    "local": { "minzoom": 15.4, "size": 0.55, "label": "Local" }
+    "local": { "minzoom": 15.4, "size": 0.42, "label": "Local" }
   },
   "categories": [
     { "id": "Mosques & churches", "short": "Mosque", "icon": "dome", "kinds": { "mosque": "Mosque", "church": "Church", "synagogue": "Synagogue", "monastery": "Monastery", "tomb": "Tomb" } },

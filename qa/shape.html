@@ -12,6 +12,6 @@ const draw = (fc, places, label) => {
   const dots = places.features.map((f) => { const [x, y] = P(f.geometry.coordinates).split(","); return `<circle cx="${x}" cy="${y}" r="${f.properties.category === "Food & drink" ? 0.6 : 1.3}" fill="${f.properties.category === "Food & drink" ? "#C4462E" : "#14213D"}"/>`; }).join("");
   return `<svg viewBox="0 0 ${W} ${H}"><text x="8" y="18">${label}</text><path d="${d}" fill="#1F4FA322" stroke="#1F4FA3" stroke-width="1.5"/>${dots}</svg>`;
 };
-Promise.all(["../data/raw/study_area_v2.geojson", "../data/study_area.geojson", "../data/places.geojson"].map((u) => fetch(u).then((r) => r.json())))
+Promise.all(["../data/raw/study_area_v3a.geojson", "../data/study_area.geojson", "../data/places.geojson"].map((u) => fetch(u).then((r) => r.json())))
   .then(([a, b, p]) => (document.getElementById("o").innerHTML = draw(a, p, "v2") + draw(b, p, "v3")));
 </script>

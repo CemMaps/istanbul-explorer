@@ -11,7 +11,7 @@ const slug = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)
 const FONT_REG = ["Montserrat Regular", "Open Sans Regular"];
 const FONT_BOLD = ["Montserrat Medium", "Open Sans Semibold"];
 
-// ----- route lines + numbered stops (shared by the main map and the Routes mini-map) -----
+// ----- route lines + numbered stops  -----
 function addRouteLayers(map, bg) {
   const empty = { type: "FeatureCollection", features: [] };
   map.addSource("route-lines", { type: "geojson", data: empty });
@@ -36,26 +36,52 @@ function setRouteData(map, lines, stops) {
   map.getSource("route-stops").setData(stops);
 }
 
-function recolour(map, theme) {
-  if (theme.basemap === "dark") return;
-  for (const l of map.getStyle().layers) {
-    if (l.type === "background") map.setPaintProperty(l.id, "background-color", cssVar("--c-map-land"));
-    else if (l.type === "fill" && /water/.test(l.id)) map.setPaintProperty(l.id, "fill-color", cssVar("--c-map-water"));
-    else if (l.type === "fill" && /park|landcover|wood|grass/.test(l.id)) map.setPaintProperty(l.id, "fill-color", cssVar("--c-map-park"));
-  }
-}
-
-// Small map for the Routes screen: basemap + the selected route only.
-export async function createMiniMap({ container, theme, config }) {
-  const map = new maplibregl.Map({
-    container, style: BASEMAPS[theme.basemap] || BASEMAPS.positron, center: config.map.home, zoom: 13,
-    attributionControl: false, pitchWithRotate: false, dragRotate: false,
-  });
-  map.touchZoomRotate.disableRotation();
-  await new Promise((r) => map.on("load", r));
-  recolour(map, theme);
-  addRouteLayers(map, cssVar("--c-surface"));
-  return { map, setRoutes: (lines, stops) => setRouteData(map, lines, stops) };
+// Frosted veil outside the study area. `rings` = the study area's outer ring(s) in [lng, lat].
+// The mask is drawn on a quarter-size canvas (soft anyway) each frame the map moves: opaque everywhere,
+// with the study area cut out through a shadow blur, so the cut-out has a feathered edge that starts
+// at the outline and reaches full blur ~1.6 km further out. The shadow trick works on iOS Safari too
+// (canvas `filter` doesn't).
+function frostOutside(map, rings) {
+  const veil = document.createElement("div");
+  veil.className = "map-veil";
+  map.getCanvasContainer().after(veil);
+  const cv = document.createElement("canvas");
+  const ctx = cv.getContext("2d", { willReadFrequently: true });
+  const Q = 4, FEATHER_M = 1600, OFF = 4000;
+  let raf = 0;
+  const draw = () => {
+    raf = 0;
+    const { clientWidth: w, clientHeight: h } = map.getContainer();
+    if (!w || !h) return; // map hidden (another tab is showing)
+    cv.width = Math.ceil(w / Q); cv.height = Math.ceil(h / Q);
+    const c = map.getCenter();
+    const mPerPx = (40075016 * Math.cos((c.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
+    const f = Math.min(Math.max(FEATHER_M / mPerPx, 14), 120) / Q; // feather in small-canvas px
+    ctx.globalCompositeOperation = "source-over";
+    ctx.fillStyle = "black"; // mask alpha only, never shown
+    ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.beginPath();
+    for (const ring of rings) ring.forEach((ll, i) => {
+      const p = map.project(ll);
+      ctx[i ? "lineTo" : "moveTo"](p.x / Q + OFF, p.y / Q);
+    });
+    ctx.closePath();
+    // Draw the shape far off-canvas and let only its blurred shadow land on the canvas; a stroke of
+    // width f grows it by f/2 first, so the fade sits outside the outline, not across it.
+    ctx.shadowColor = "black"; ctx.shadowBlur = f; ctx.shadowOffsetX = -OFF;
+    ctx.lineWidth = f; ctx.lineJoin = "round";
+    ctx.fill(); ctx.stroke();
+    ctx.shadowBlur = 0; ctx.shadowOffsetX = 0;
+    const px = ctx.getImageData(0, 0, cv.width, cv.height).data;
+    let any = false;
+    for (let i = 3; i < px.length; i += 16) if (px[i] > 8) { any = true; break; }
+    veil.hidden = !any; // zoomed in well inside the area: no veil, no blur cost
+    if (any) veil.style.webkitMaskImage = veil.style.maskImage = `url(${cv.toDataURL()})`;
+  };
+  const queue = () => { if (!raf) raf = requestAnimationFrame(draw); };
+  map.on("move", draw); map.on("resize", queue); // same frame as the map, so the veil never lags
+  draw();
 }
 
 export async function createMap({ container, theme, config, data, onPlace }) {
@@ -94,16 +120,15 @@ export async function createMap({ container, theme, config, data, onPlace }) {
   map.addImage("pin-home", await pinImage("home", navy, bg, dark ? { filled: true, inkColor: cssVar("--c-ink-inverse"), ring: cssVar("--c-ink-inverse") } : { filled: true }), { pixelRatio: 2 });
   map.addImage("pin-airport", await pinImage("plane", navy, bg, { filled: true }), { pixelRatio: 2 });
 
-  // Mask outside the study area.
+  // Outside the study area: frosted glass that fades in (2026-11-06, Cem: "a gradient of blurriness, no outline").
+  // A DOM layer over the map canvas blurs what is behind it (backdrop-filter); its mask is the study area,
+  // feathered, so the blur and the milky tint grow gradually past the edge. Browsers without backdrop-filter
+  // fall back to the plain milky fill below.
   map.addSource("mask", { type: "geojson", data: data.mask });
-  // Frosted-glass look outside: a milky veil in the surface colour (WebGL maps can't blur part of
-  // themselves), plus a soft halo and a very thin grey edge along the study area.
+  const frosted = CSS.supports("backdrop-filter", "blur(2px)") || CSS.supports("-webkit-backdrop-filter", "blur(2px)");
   map.addLayer({ id: "mask", type: "fill", source: "mask",
-    paint: { "fill-color": cssVar("--c-surface"), "fill-opacity": Math.max(theme.maskOpacity ?? 0.7, 0.78) } });
-  map.addLayer({ id: "mask-halo", type: "line", source: "mask",
-    paint: { "line-color": cssVar("--c-surface"), "line-width": 10, "line-blur": 8, "line-opacity": 0.8, "line-offset": 5 } });
-  map.addLayer({ id: "mask-edge", type: "line", source: "mask",
-    paint: { "line-color": cssVar("--c-ink-2"), "line-width": 0.8, "line-opacity": 0.35 } });
+    paint: { "fill-color": cssVar("--c-surface"), "fill-opacity": frosted ? 0.18 : Math.max(theme.maskOpacity ?? 0.7, 0.78) } });
+  if (frosted) frostOutside(map, data.mask.features[0].geometry.coordinates.slice(1));
 
   // Vibe map: soft translucent fill under everything, off by default (character or lifestyle colouring).
   map.addSource("areas", { type: "geojson", data: data.areas || { type: "FeatureCollection", features: [] } });
@@ -168,13 +193,13 @@ export async function createMap({ container, theme, config, data, onPlace }) {
         // Small at city zoom so more icons fit; collisions on, so the most famous win instead of piling up
         // (a hidden icon still shows as its dot underneath).
         "icon-size": ["interpolate", ["linear"], ["zoom"], 10, t.size * 0.48, 12, t.size * 0.6, 14, t.size * 0.8, 17, t.size],
-        "icon-allow-overlap": false, "icon-padding": 0,
+        "icon-allow-overlap": false, "icon-padding": tier === "local" ? 3 : 0, // food: smaller and spaced, the rest stay dots
         "symbol-sort-key": ["-", 0, ["get", "score"]],
         "text-field": ["step", ["zoom"], "", labelFrom, ["get", "name"]],
         "text-font": tier === "must-see" ? FONT_BOLD : FONT_REG, "text-size": tier === "must-see" ? 12.5 : 11.5,
         "text-offset": [0, 1.35], "text-anchor": "top", "text-optional": true, "text-max-width": 9,
       },
-      paint: { "icon-opacity": dimOp, "text-opacity": dimOp, "text-color": cssVar("--c-ink"),
+      paint: { "icon-opacity": tier === "local" ? ["*", 0.9, dimOp] : dimOp, "text-opacity": dimOp, "text-color": cssVar("--c-ink"),
                "text-halo-color": bg, "text-halo-width": 1.4 },
     });
     // Neighbourhoods read as area names, not pins.

@@ -89,16 +89,12 @@
     <!-- Plan -->
     <section id="screen-plan" class="screen" aria-label="Routes">
       <div class="page routes-page">
-        <div id="plan-tabs" class="day-tabs" role="tablist" aria-label="Day"></div>
-        <div class="route-map-wrap">
-          <div id="route-map" class="route-map" aria-label="Route map"></div>
-          <div id="route-map-empty" class="route-map-empty" hidden></div>
-        </div>
-        <div class="route-bar">
-          <div id="route-chips" class="route-chips" role="tablist" aria-label="Routes for this day"></div>
-          <select id="plan-who" class="who" aria-label="Whose routes"></select>
-        </div>
-        <div id="route-tools" class="route-tools"></div>
+        <!-- Routes (rebuilt 2026-11-06): no mini map (the Explore map shows a route), one quiet header per day,
+             alternatives only when there is more than one. -->
+        <div id="plan-tabs" class="day-seg" role="tablist" aria-label="Day"></div>
+        <select id="plan-who" class="who" aria-label="Whose routes"></select>
+        <div id="route-head" class="route-head"></div>
+        <div id="route-chips" class="route-chips" role="tablist" aria-label="Routes for this day"></div>
         <div id="plan-body" class="timeline"></div>
         <div id="plan-tray"></div>
       </div>

@@ -51,6 +51,14 @@ export const store = {
     return r || null;
   },
   setActive(day, rid) { state.active[day] = rid; save(); },
+  // The day's main route is simply its first one (shown first, and on the splash screen).
+  makeMain(rid) {
+    const r = store.route(rid);
+    if (!r) return;
+    state.routes = [r, ...state.routes.filter((x) => x !== r)];
+    save();
+  },
+  mainRoute: (day) => state.routes.find((r) => r.day === day && r.ids.length) || null,
   newRoute(day) {
     const n = state.routes.filter((r) => r.day === day).length + 1;
     const r = { id: uid(), day, name: `Route ${n}`, ids: [], start: "home", onMap: false, ci: nextCi() };

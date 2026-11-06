@@ -59,12 +59,22 @@ if HULL:
 else:
     area_m = unary_union([p.buffer(WALK_M) for p in pts_m] + [water_m])
     area_m = area_m.buffer(CLOSE_M).buffer(-CLOSE_M)
+# Sea of Marmara apron (2026-11-06, Cem: "join the bottom from the Asian to the European side, show more sea"):
+# one smooth band of water from the Zeytinburnu shore across the Bosphorus mouth to Fenerbahçe.
+SEA = [(28.895, 40.992), (28.93, 40.972), (28.975, 40.962), (29.02, 40.952), (29.052, 40.956), (29.06, 40.972),
+       (29.03, 40.995), (28.98, 41.005), (28.92, 41.0)]
+from shapely.geometry import Polygon
+area_m = unary_union([area_m, affine_transform(Polygon(SEA), to_m).buffer(800)])
 area_m = area_m.buffer(-OPEN_M).buffer(OPEN_M)
 # The open can shave off a lone sight at the edge (Anadolu Feneri): add every sight back and blend it in.
 area_m = unary_union([area_m] + [p.buffer(WALK_M * 0.8) for p in pts_m]).buffer(1500).buffer(-1500)
 if area_m.geom_type == "MultiPolygon":
     area_m = max(area_m.geoms, key=lambda g: g.area)
-area_m = area_m.buffer(ROUND_M).buffer(-ROUND_M).simplify(60)
+area_m = area_m.buffer(ROUND_M).buffer(-ROUND_M)
+# Round the outward (convex) corners too, and sit the edge a little further out: the app fades the
+# outside in with a blur gradient, so the line itself is never drawn (2026-11-06).
+GROW_M = int(os.environ.get("GROW_M", 700))
+area_m = area_m.buffer(GROW_M, quad_segs=16).simplify(40)
 area = affine_transform(area_m, to_deg)
 
 outside = [f["properties"]["id"] for f in places if not area.contains(Point(f["geometry"]["coordinates"]))

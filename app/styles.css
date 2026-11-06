@@ -1,6 +1,7 @@
 /* All colours, fonts, radii and shadow strength come from theme tokens (theme.js → CSS custom properties). */
 :root {
-  --tabbar-h: calc(64px + env(safe-area-inset-bottom));
+  --tabbar-pad: max(6px, calc(env(safe-area-inset-bottom) - 14px)); /* tabs sit just above the home bar, like native apps (2026-11-06) */
+  --tabbar-h: calc(64px + var(--tabbar-pad));
   --topbar-h: 60px;
   --gutter: 16px;
   --tap: 44px;
@@ -115,7 +116,7 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .empty { color: var(--c-ink-2); font-size: 14px; padding: 16px 0; }
 
 /* Tab bar */
-.tabbar { position: absolute; z-index: 40; left: 0; right: 0; bottom: 0; height: var(--tabbar-h); display: grid; grid-template-columns: repeat(4, 1fr); background: var(--c-surface); border-top: 1px solid var(--c-line); padding-bottom: env(safe-area-inset-bottom); }
+.tabbar { position: absolute; z-index: 40; left: 0; right: 0; bottom: 0; height: var(--tabbar-h); display: grid; grid-template-columns: repeat(4, 1fr); background: var(--c-surface); border-top: 1px solid var(--c-line); padding-bottom: var(--tabbar-pad); }
 .tab { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--c-ink-2); }
 .tab.is-active { color: var(--c-accent); }
 

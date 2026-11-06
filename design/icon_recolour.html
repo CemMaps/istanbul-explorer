@@ -1,0 +1,59 @@
+<!doctype html>
+<html><body style="margin:0;background:transparent">
+<canvas id="out"></canvas>
+<script>
+// Usage: recolour.html?n=512&mode=full|mask|round
+// Recolours only the background around the pin (flood fill from the edges, stopped by the cream outline)
+// from the image's blue to the Iznik navy, then fills the black corners. The artwork's scale is unchanged.
+const q = new URLSearchParams(location.search);
+const n = +q.get("n"), mode = q.get("mode");
+const NAVY = [0x14, 0x21, 0x3D];
+const img = new Image();
+img.onload = () => {
+  const W = img.width, H = img.height;
+  const a = document.createElement("canvas"); a.width = W; a.height = H;
+  const x = a.getContext("2d");
+  // corners: clip the black rounded corners (and their dark rim) away, navy behind
+  x.fillStyle = `rgb(${NAVY})`; x.fillRect(0, 0, W, H);
+  x.save(); x.beginPath(); const ins = W * 0.016; x.roundRect(ins, ins, W - 2 * ins, H - 2 * ins, W * 0.125 - ins); x.clip();
+  x.drawImage(img, 0, 0); x.restore();
+  const d = x.getImageData(0, 0, W, H), p = d.data;
+  const ref = [0x0D, 0x1D, 0x53];
+  const delta = NAVY.map((v, i) => v - ref[i]);
+  const dist = (i, c) => Math.hypot(p[i] - c[0], p[i + 1] - c[1], p[i + 2] - c[2]);
+  const seen = new Uint8Array(W * H);
+  const stack = [];
+  for (let i = 0; i < W; i++) { stack.push(i, (H - 1) * W + i); }
+  for (let j = 0; j < H; j++) { stack.push(j * W, j * W + W - 1); }
+  while (stack.length) {
+    const k = stack.pop();
+    if (seen[k]) continue;
+    const i = k * 4;
+    const isNavy = dist(i, NAVY) < 6;
+    const isBg = dist(i, ref) < 46;
+    if (!isNavy && !isBg) continue;
+    seen[k] = 1;
+    if (!isNavy) for (let c = 0; c < 3; c++) p[i + c] = Math.max(0, Math.min(255, p[i + c] + delta[c]));
+    const xx = k % W, yy = (k / W) | 0;
+    if (xx > 0) stack.push(k - 1); if (xx < W - 1) stack.push(k + 1);
+    if (yy > 0) stack.push(k - W); if (yy < H - 1) stack.push(k + W);
+  }
+  // soften the seam: pixels next to the filled area (the outline's anti-aliased edge) get half the shift
+  for (let k = 0; k < W * H; k++) {
+    if (seen[k]) continue;
+    const xx = k % W, yy = (k / W) | 0;
+    if ((xx > 0 && seen[k - 1]) || (xx < W - 1 && seen[k + 1]) || (yy > 0 && seen[k - W]) || (yy < H - 1 && seen[k + W])) {
+      const i = k * 4; for (let c = 0; c < 3; c++) p[i + c] = Math.max(0, Math.min(255, p[i + c] + delta[c] * 0.5));
+    }
+  }
+  x.putImageData(d, 0, 0);
+  const o = document.getElementById("out"); o.width = n; o.height = n;
+  const y = o.getContext("2d"); y.imageSmoothingQuality = "high";
+  if (mode === "full") y.drawImage(a, 0, 0, n, n);
+  if (mode === "mask") { y.fillStyle = `rgb(${NAVY})`; y.fillRect(0, 0, n, n); const m = n * 0.8; y.drawImage(a, (n - m) / 2, (n - m) / 2, m, m); }
+  if (mode === "round") { y.beginPath(); y.roundRect(0, 0, n, n, n * 0.2); y.clip(); y.drawImage(a, 0, 0, n, n); }
+  document.title = "done";
+};
+img.src = "file:///C:/Users/cemgu/Documents/temp_project/istanbul-explorer/app/icons/icon-source.webp";
+</script>
+</body></html>

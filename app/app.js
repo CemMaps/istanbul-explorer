@@ -1048,6 +1048,12 @@ async function buildMap(camera) {
   if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
   if (camera) MAP.map.jumpTo(camera);
   MAP.map.on("moveend", renderList);
+  // Small spinner by the list title while the map moves or tiles load, so the list never looks stuck (2026-11-06).
+  let busyT;
+  const busy = (on) => { clearTimeout(busyT); if (on) busyT = setTimeout(() => ($("#list-busy").hidden = false), 150); else $("#list-busy").hidden = true; };
+  MAP.map.on("movestart", () => busy(true));
+  MAP.map.on("dataloading", () => { if (!MAP.map.areTilesLoaded()) busy(true); });
+  MAP.map.on("idle", () => busy(false));
   MAP.map.on("click", onMapClick);
   applyBase();
   renderMapRoutes();

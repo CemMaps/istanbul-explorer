@@ -699,3 +699,6 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 /* Words ("Tomorrow!", "Hoş geldiniz!") are smaller than the big day number so they fit on a phone. */
 .sp-big.is-word { font-size: clamp(46px, 14.5vw, 72px); letter-spacing: -0.03em; line-height: 1; }
 .cc-big.is-word { font-size: 30px; }
+/* Spinner next to "Top picks in view" while the map is moving or loading. */
+.list-title-wrap { display: inline-flex; align-items: center; gap: 8px; }
+.list-busy { width: 13px; height: 13px; border-width: 2px; }

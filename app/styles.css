@@ -14,7 +14,7 @@
 html, body { margin: 0; height: 100%; background: var(--c-ground); }
 /* Installed on iPhone the whole page could be dragged and bounced, showing a gap at the top (2026-11-06).
    Pin the page: only the inner lists scroll, like a native app. */
-html, body { position: fixed; inset: 0; width: 100%; overflow: hidden; overscroll-behavior: none; }
+html, body { position: fixed; top: 0; left: 0; width: 100%; height: var(--app-h, 100%); overflow: hidden; overscroll-behavior: none; }
 body { font-family: var(--font-body); color: var(--c-ink); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 h1, h2, h3 { font-family: var(--font-heading); margin: 0; letter-spacing: -0.015em; font-weight: 700; }
@@ -24,7 +24,7 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 :focus-visible { outline: 3px solid var(--c-primary); outline-offset: 2px; }
 
 /* Phone frame: same layout centred at ≤430px on wider screens */
-.app { position: relative; max-width: 600px; height: 100dvh; margin: 0 auto; overflow: hidden; background: var(--c-ground); }
+.app { position: relative; max-width: 600px; height: var(--app-h, 100dvh); margin: 0 auto; overflow: hidden; background: var(--c-ground); }
 
 .screen { position: absolute; inset: 0 0 var(--tabbar-h) 0; display: none; }
 .screen.is-active { display: block; }
@@ -418,8 +418,10 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 /* Splash: slow drone-like drift over a Golden Horn sunset, then fade to the map */
 .sp-photo { position: absolute; inset: 0; opacity: 0; transition: opacity 1.2s ease; }
 .sp-photo.is-loaded { opacity: 1; }
-.sp-photo img { position: absolute; height: 100%; width: auto; min-width: 100%; left: 0; top: 0; object-fit: cover; transform-origin: 30% 60%; animation: drone 40s ease-in-out infinite alternate; }
-@keyframes drone { from { transform: scale(1.08) translate(0, 0); } to { transform: scale(1.22) translate(-38%, -3%); } }
+/* The drift pans across the photo's own overflow (object-position 0% → 100%) and back, plus a slow zoom from the
+   centre, so it never runs past the edge of the photo on any screen size (2026-11-06: it used to reveal navy). */
+.sp-photo img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 0% 50%; transform-origin: 50% 55%; animation: drone 45s ease-in-out infinite alternate; will-change: transform; }
+@keyframes drone { from { object-position: 0% 50%; transform: scale(1.04); } to { object-position: 100% 50%; transform: scale(1.14); } }
 .sp-scrim { position: absolute; inset: 0; background: linear-gradient(to bottom, color-mix(in srgb, var(--c-navy) 55%, transparent) 0%, color-mix(in srgb, var(--c-navy) 10%, transparent) 35%, color-mix(in srgb, var(--c-navy) 35%, transparent) 60%, color-mix(in srgb, var(--c-navy) 92%, transparent) 100%); }
 .splash .sp-scrim { background: linear-gradient(to bottom, color-mix(in srgb, var(--c-navy) 55%, transparent) 0%, color-mix(in srgb, var(--c-navy) 25%, transparent) 22%, color-mix(in srgb, var(--c-navy) 55%, transparent) 45%, color-mix(in srgb, var(--c-navy) 45%, transparent) 62%, color-mix(in srgb, var(--c-navy) 94%, transparent) 100%); }
 .splash .sp-big, .splash:not([data-level="0"]) .sp-big { background: none; color: var(--c-ink-inverse); animation: none; }

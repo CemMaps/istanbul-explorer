@@ -26,6 +26,22 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <style>html.booting body > * { visibility: hidden; }</style>
+  <script>
+    // App height (2026-11-06): installed on iPhone, 100% / 100dvh can come out shorter than the screen,
+    // leaving a band at the bottom. Full-screen home-screen apps use the real screen height instead.
+    (function () {
+      function setH() {
+        var standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
+        var h = window.innerHeight;
+        var portrait = window.innerWidth < window.innerHeight;
+        if (standalone && portrait && screen.height > h) h = screen.height;
+        document.documentElement.style.setProperty("--app-h", h + "px");
+      }
+      setH();
+      addEventListener("resize", setH);
+      addEventListener("orientationchange", function () { setTimeout(setH, 300); });
+    })();
+  </script>
   <link rel="stylesheet" href="styles.css">
   <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
   <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>

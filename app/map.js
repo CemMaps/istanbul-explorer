@@ -94,9 +94,21 @@ function frostOutside(map, rings) {
     const px = ctx.getImageData(0, 0, cv.width, cv.height).data;
     let any = false;
     for (let i = 3; i < px.length; i += 16) if (px[i] > 8) { any = true; break; }
-    veil.hidden = !any; // zoomed in well inside the area: no veil, no blur cost
-    if (any) veil.style.webkitMaskImage = veil.style.maskImage = `url(${cv.toDataURL()})`;
+    if (!any) { veil.hidden = true; hideAt = ++seq; return; } // zoomed in well inside the area: no veil, no blur cost
+    // Flicker fix (2026-11-06): a new mask image decodes asynchronously, and meanwhile the veil showed with an older
+    // mask (or, after being hidden, one from another view), so the whole map blurred for a frame. Decode first, then
+    // swap; the veil is only unhidden once it carries a mask for this view.
+    const url = cv.toDataURL(), my = ++seq;
+    const img = new Image();
+    img.src = url;
+    (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => {
+      if (my < applied || my < hideAt) return; // an older frame, or the view moved fully inside since
+      applied = my;
+      veil.style.webkitMaskImage = veil.style.maskImage = `url(${url})`;
+      if (veil.hidden) requestAnimationFrame(() => { if (applied === my && my > hideAt) veil.hidden = false; });
+    });
   };
+  let seq = 0, applied = 0, hideAt = 0;
   const queue = () => { if (!raf) raf = requestAnimationFrame(draw); };
   map.on("move", draw); map.on("resize", queue); // same frame as the map, so the veil never lags
   map.on("remove", () => { cancelAnimationFrame(raf); veil.remove(); }); // theme switch rebuilds the map: no stale veil

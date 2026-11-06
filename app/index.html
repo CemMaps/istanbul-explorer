@@ -30,11 +30,18 @@
     // App height (2026-11-06): installed on iPhone, 100% / 100dvh can come out shorter than the screen,
     // leaving a band at the bottom. Full-screen home-screen apps use the real screen height instead.
     (function () {
+      // iOS 26 home-screen apps leave a gap the size of the status bar; the standalone checks are not reliable there,
+      // so: on an iPhone in portrait, a shortfall of up to 100 px against the screen means "full screen app, fill it".
+      // (Safari with its toolbars falls short by far more, so the browser is left alone.)
+      var ios = /iPhone|iPod/.test(navigator.userAgent) || typeof navigator.standalone === "boolean";
       function setH() {
-        var standalone = navigator.standalone || matchMedia("(display-mode: standalone)").matches;
-        var h = window.innerHeight;
-        var portrait = window.innerWidth < window.innerHeight;
-        if (standalone && portrait && screen.height > h) h = screen.height;
+        var standalone = navigator.standalone === true || matchMedia("(display-mode: standalone)").matches || matchMedia("(display-mode: fullscreen)").matches;
+        var h = Math.max(window.innerHeight, document.documentElement.clientHeight || 0);
+        var portrait = window.innerWidth < screen.height;
+        var gap = screen.height - h;
+        var app = portrait && gap > 0 && (standalone || (ios && gap <= 100));
+        if (app) h = screen.height;
+        document.documentElement.classList.toggle("is-fullapp", app || standalone);
         document.documentElement.style.setProperty("--app-h", h + "px");
       }
       setH();

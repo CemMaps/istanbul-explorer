@@ -14,12 +14,15 @@
 html, body { margin: 0; height: 100%; background: var(--c-ground); }
 /* Installed on iPhone the whole page could be dragged and bounced, showing a gap at the top (2026-11-06).
    Pin the page: only the inner lists scroll, like a native app. */
-html, body { position: fixed; top: 0; left: 0; width: 100%; height: var(--app-h, 100%); overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* No position:fixed / overflow:hidden on body: on iOS 26 that clipped the app to a too-short viewport (band at the
+   bottom, tab bar cut off). Overflow on html applies to the viewport (no box clipping); overscroll-behavior stops the bounce. */
+html { overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { overscroll-behavior: none; touch-action: pan-x pan-y; }
 /* pan only (no pinch, no double-tap zoom) everywhere; MapLibre sets its own touch handling on the map canvas */
 .app, .app * { touch-action: pan-x pan-y; }
 .maplibregl-canvas-container, .maplibregl-canvas { touch-action: none; }
 /* Installed app: never shorter than the large viewport either (belt and braces for the iOS 26 gap) */
-html.is-fullapp, html.is-fullapp body, html.is-fullapp .app { height: max(var(--app-h, 100%), 100lvh); }
+html.is-fullapp .app { height: max(var(--app-h, 100dvh), 100lvh); }
 body { font-family: var(--font-body); color: var(--c-ink); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
 h1, h2, h3 { font-family: var(--font-heading); margin: 0; letter-spacing: -0.015em; font-weight: 700; }

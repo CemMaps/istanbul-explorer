@@ -14,7 +14,10 @@
 html, body { margin: 0; height: 100%; background: var(--c-ground); }
 /* Installed on iPhone the whole page could be dragged and bounced, showing a gap at the top (2026-11-06).
    Pin the page: only the inner lists scroll, like a native app. */
-html, body { position: fixed; top: 0; left: 0; width: 100%; height: var(--app-h, 100%); overflow: hidden; overscroll-behavior: none; }
+html, body { position: fixed; top: 0; left: 0; width: 100%; height: var(--app-h, 100%); overflow: hidden; overscroll-behavior: none; touch-action: pan-x pan-y; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* pan only (no pinch, no double-tap zoom) everywhere; MapLibre sets its own touch handling on the map canvas */
+.app, .app * { touch-action: pan-x pan-y; }
+.maplibregl-canvas-container, .maplibregl-canvas { touch-action: none; }
 /* Installed app: never shorter than the large viewport either (belt and braces for the iOS 26 gap) */
 html.is-fullapp, html.is-fullapp body, html.is-fullapp .app { height: max(var(--app-h, 100%), 100lvh); }
 body { font-family: var(--font-body); color: var(--c-ink); -webkit-font-smoothing: antialiased; -webkit-tap-highlight-color: transparent; }

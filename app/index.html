@@ -2,7 +2,7 @@
 <html lang="en" class="booting">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="">
   <meta name="description" content="Our family's map of Istanbul: photos, favourites and a loose plan for each day.">
   <title>Istanbul Explorer</title>
@@ -46,6 +46,14 @@
       }
       setH();
       addEventListener("resize", setH);
+      // No page zoom (2026-11-06, Cem): pinching a list or the splash zoomed the whole app and threw the layout off.
+      // iOS ignores user-scalable=no in places, so block its pinch gestures and double-tap zoom too; the map has its own pinch.
+      ["gesturestart", "gesturechange", "gestureend"].forEach(function (t) {
+        document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+      });
+      document.addEventListener("touchmove", function (e) {
+        if (e.touches.length > 1 && !(e.target.closest && e.target.closest(".maplibregl-canvas-container"))) e.preventDefault();
+      }, { passive: false });
       addEventListener("orientationchange", function () { setTimeout(setH, 300); });
     })();
   </script>

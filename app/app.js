@@ -460,8 +460,10 @@ $("#dialog").addEventListener("click", (e) => { if (e.target.id === "dialog") cl
 function askName() {
   openDialog(`<h2>Who's this?</h2>
     <p>So the others can tell whose picks are whose. It stays on this phone. No account.</p>
-    <div class="name-opts">${CFG.trip.people.map((n) => `<button data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>`, { dismissable: false });
-  const done = (n) => { if (!n) return; store.setName(n); $("#dialog").hidden = true; toast(`Hi ${n}! Tap hearts to save places.`); };
+    <div class="name-opts">${CFG.trip.people.map((n) => `<button data-name="${esc(n)}">${esc(n)}</button>`).join("")}</div>
+    <button class="name-visitor" data-name="Visitor">Visitor</button>`, { dismissable: false });
+  // "Visitor" (2026-11-06): someone outside the four, e.g. opening a shared link. Same app, saved as "Visitor".
+  const done = (n) => { if (!n) return; store.setName(n); $("#dialog").hidden = true; toast(n === "Visitor" ? "Welcome! Tap hearts to save places." : `Hi ${n}! Tap hearts to save places.`); };
   $("#dialog-card").addEventListener("click", (e) => { const b = e.target.closest("[data-name]"); if (b) done(b.dataset.name); });
 }
 
@@ -471,7 +473,7 @@ function showCredits() {
   rows.unshift(SPLASH_CREDIT);
   openDialog(`<h2>Credits</h2>
     <p>Photos from <b>Wikimedia Commons</b>, used under their licences. Place data from <b>Wikidata</b> (CC0); short descriptions from <b>Wikipedia</b> (CC BY-SA 4.0).
-    Map data © <b>OpenStreetMap</b> contributors (ODbL), basemap © <b>CARTO</b>. Satellite imagery © <b>Esri</b>, Maxar, Earthstar Geographics; topographic map © <b>OpenTopoMap</b> (CC BY-SA), SRTM. Weather by <b>Open-Meteo</b> (CC BY 4.0).</p>
+    Map data © <b>OpenStreetMap</b> contributors (ODbL), basemap © <b>CARTO</b>. Street and satellite maps © <b>Esri</b>, Maxar, Earthstar Geographics, HERE, Garmin; elevation for the hill shading from <b>Mapzen</b> terrain tiles (AWS Open Data). Weather by <b>Open-Meteo</b> (CC BY 4.0).</p>
     <button class="btn-secondary" data-close-dialog>Close</button>
     <ul class="credits">${rows.map((r) => `<li><b>${esc(r.place)}</b>: “${esc(r.file)}” by ${esc(r.author || "unknown")}, ${esc(r.licence || "see Commons")}</li>`).join("")}</ul>`);
   $("#dialog-card").addEventListener("click", (e) => { if (e.target.closest("[data-close-dialog]")) $("#dialog").hidden = true; });

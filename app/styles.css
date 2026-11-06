@@ -702,3 +702,5 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 /* Spinner next to "Top picks in view" while the map is moving or loading. */
 .list-title-wrap { display: inline-flex; align-items: center; gap: 8px; }
 .list-busy { width: 13px; height: 13px; border-width: 2px; }
+/* "Visitor" on the name prompt: quiet underlined text under the four names. */
+.name-visitor { display: block; margin: 14px auto 2px; min-height: var(--tap); padding: 0 16px; color: var(--c-ink-2); font-weight: 600; font-size: 14px; text-decoration: underline; text-underline-offset: 3px; background: none; }

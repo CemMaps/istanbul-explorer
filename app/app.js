@@ -744,7 +744,13 @@ function setHereMode(on) {
   $("#btn-here").setAttribute("aria-pressed", on);
   $("#here-hint").hidden = !on;
   MAP.map.getCanvas().style.cursor = on ? "crosshair" : "";
-  if (!on) { MAP.setHere(null); HERE_BACK = null; }
+  // While the tool is on, the filter chips step aside for more map (2026-11-08); filtering is for after.
+  $("#app").classList.toggle("is-here", on);
+  if (!on) {
+    // Only turning the tool off clears the circle and the numbers (the panel's ✕ keeps them on the map).
+    if (!$("#dialog").hidden && $("#dialog").classList.contains("is-sheet")) closeHere();
+    HERE = null; HERE_BACK = null; MAP.setHere(null);
+  }
 }
 $("#btn-here").addEventListener("click", () => setHereMode(!S.here));
 function areaAt(c) {
@@ -781,7 +787,10 @@ function onMapClick(e) {
   if (!S.here) return vibeTap(e);
   // A tap on one of the numbers picks that place instead of starting a new search.
   const hit = HERE && MAP.map.queryRenderedFeatures(e.point, { layers: ["here-num"] })[0];
-  if (hit) return hereSelect(hit.properties.n - 1, { pan: false });
+  if (hit) {
+    if ($("#dialog").hidden) return showHere(HERE.c, { sel: hit.properties.n - 1, fit: false }); // panel closed: bring it back
+    return hereSelect(hit.properties.n - 1, { pan: false });
+  }
   showHere([e.lngLat.lng, e.lngLat.lat]);
 }
 // Frame the whole circle in the part of the map you can actually see: below the search bar and chips, left of the
@@ -795,7 +804,7 @@ function fitHere(c) {
   // fitBounds adds the map's own padding (kept for the list sheet) to this one: together they were taller than the
   // screen and MapLibre silently didn't move. Clear it first; closeHere() → setSheet() puts it back.
   m.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
-  m.fitBounds([[c[0] - dx, c[1] - dy], [c[0] + dx, c[1] + dy]], { padding: { top, bottom, left: 16, right: 68 }, maxZoom: 15.5, duration: 500 });
+  m.fitBounds([[c[0] - dx, c[1] - dy], [c[0] + dx, c[1] + dy]], { padding: { top, bottom, left: 68, right: 68 }, maxZoom: 15.5 /* even sides: the tapped spot sits in the middle */, duration: 500 });
 }
 let HERE_BACK = null; // the panel to come back to after opening a place from it
 function showHere(c, { sel = -1, fit = true } = {}) {
@@ -834,7 +843,7 @@ function showHere(c, { sel = -1, fit = true } = {}) {
   HERE = { c, near: near.slice(0, 8), sel: -1 };
   hereSelect(sel, { pan: false });
   if (fit) fitHere(c);
-  const open = (i) => { HERE_BACK = { c, sel: i }; const id = HERE.near[i].p.id; closeHere({ keepNumbers: true }); openPlace(id); };
+  const open = (i) => { HERE_BACK = { c, sel: i }; const id = HERE.near[i].p.id; closeHere(); openPlace(id); };
   $("#dialog-card").onclick = (ev) => {
     const o = ev.target.closest("[data-here-open]");
     if (o) { ev.stopPropagation(); open(+o.dataset.hereOpen); return; }
@@ -847,9 +856,9 @@ function showHere(c, { sel = -1, fit = true } = {}) {
     if (ev.target.closest("[data-close-here]")) closeHere();
   };
 }
-function closeHere({ keepNumbers = false } = {}) {
-  if (HERE && S.here && !keepNumbers) MAP.setHere(HERE.c, HERE_M); // keep the circle, drop the numbers
-  HERE = null;
+// Hides the panel only: the circle and the numbers stay on the map (tap a number to bring the panel back),
+// until the What's here button is turned off (2026-11-08).
+function closeHere() {
   $("#dialog").hidden = true; $("#dialog").classList.remove("is-sheet"); $("#dialog-card").onclick = null; setSheet(S.sheet);
 }
 

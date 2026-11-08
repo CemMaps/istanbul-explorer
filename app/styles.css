@@ -728,3 +728,5 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .here-list .row.is-sel .rank { background: var(--c-accent); transform: scale(1.15); }
 .here-open { margin-left: auto; flex: none; width: var(--tap); height: var(--tap); display: grid; place-items: center; border-radius: 50%; color: var(--c-ink-2); background: none; }
 .here-list .row.is-sel .here-open { color: var(--c-accent); background: var(--c-surface); box-shadow: var(--shadow-sm); }
+/* What's here on: no filter chips (more map for the circle) */
+.app.is-here .chips { display: none; }

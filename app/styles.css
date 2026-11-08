@@ -719,3 +719,12 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .north-needle { transition: transform .05s linear; }
 .north-needle .nn-n { fill: var(--c-accent); }
 .north-needle .nn-s { fill: none; stroke: var(--c-ink-2); stroke-width: 1.6; stroke-linejoin: round; }
+
+/* What's here (2026-11-08): numbers match the markers on the map; tap picks, tap again (or the arrow) opens */
+.here-tip { margin: -4px 0 6px; }
+.here-list .row { cursor: pointer; border-radius: var(--radius-sm); padding: 8px 6px; margin: 0 -6px; transition: background .15s var(--ease); }
+.here-list .rank { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; background: var(--c-navy); color: var(--c-ink-inverse); font-size: 13px; transition: transform .15s var(--ease), background .15s var(--ease); }
+.here-list .row.is-sel { background: color-mix(in srgb, var(--c-accent) 10%, var(--c-surface)); }
+.here-list .row.is-sel .rank { background: var(--c-accent); transform: scale(1.15); }
+.here-open { margin-left: auto; flex: none; width: var(--tap); height: var(--tap); display: grid; place-items: center; border-radius: 50%; color: var(--c-ink-2); background: none; }
+.here-list .row.is-sel .here-open { color: var(--c-accent); background: var(--c-surface); box-shadow: var(--shadow-sm); }

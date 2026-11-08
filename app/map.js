@@ -237,8 +237,17 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     paint: { "fill-color": cssVar("--c-primary"), "fill-opacity": 0.12 } });
   map.addLayer({ id: "here-ring-line", type: "line", source: "here", filter: ["==", ["geometry-type"], "Polygon"],
     paint: { "line-color": cssVar("--c-primary"), "line-width": 2.5, "line-dasharray": [2, 1.5], "line-opacity": 0.9 } });
-  map.addLayer({ id: "here-pt", type: "circle", source: "here", filter: ["==", ["geometry-type"], "Point"],
+  map.addLayer({ id: "here-pt", type: "circle", source: "here", filter: ["all", ["==", ["geometry-type"], "Point"], ["!", ["has", "n"]]],
     paint: { "circle-radius": 8, "circle-color": navy, "circle-stroke-color": bg, "circle-stroke-width": 3 } });
+  // Numbered markers for the places listed in the What's here panel (2026-11-08); the picked one is bigger, in the accent.
+  const isSel = ["==", ["get", "sel"], true];
+  map.addLayer({ id: "here-num", type: "circle", source: "here", filter: ["has", "n"],
+    paint: { "circle-radius": ["case", isSel, 15, 11], "circle-color": ["case", isSel, cssVar("--c-accent"), navy],
+             "circle-stroke-color": bg, "circle-stroke-width": 2.5 } });
+  map.addLayer({ id: "here-num-txt", type: "symbol", source: "here", filter: ["has", "n"],
+    layout: { "text-field": ["to-string", ["get", "n"]], "text-font": FONT_BOLD, "text-size": ["case", isSel, 14, 12],
+              "text-allow-overlap": true, "text-ignore-placement": true, "symbol-sort-key": ["case", isSel, 1, 0] },
+    paint: { "text-color": cssVar("--c-ink-inverse") } });
 
   // You-are-here
   map.addSource("me", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
@@ -292,7 +301,7 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     },
     vibeAt: (pt) => map.queryRenderedFeatures(pt, { layers: ["vibe-fill"] })[0]?.properties,
     setRoutes: (lines, stops) => setRouteData(map, lines, stops),
-    setHere(c, radiusM) {
+    setHere(c, radiusM, items = [], sel = -1) {
       const feats = [];
       if (c) {
         const ring = [];
@@ -302,6 +311,9 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
         }
         feats.push({ type: "Feature", properties: {}, geometry: { type: "Polygon", coordinates: [ring] } },
                    { type: "Feature", properties: {}, geometry: { type: "Point", coordinates: c } });
+        // picked one last, so it draws on top
+        items.map((xy, i) => ({ type: "Feature", properties: { n: i + 1, sel: i === sel }, geometry: { type: "Point", coordinates: xy } }))
+          .sort((a, b) => a.properties.sel - b.properties.sel).forEach((f) => feats.push(f));
       }
       map.getSource("here").setData({ type: "FeatureCollection", features: feats });
     },

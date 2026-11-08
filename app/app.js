@@ -753,8 +753,28 @@ function areaAt(c) {
   return AREAS?.features.find((f) => { const g = f.geometry;
     return g && (g.type === "Polygon" ? inPoly(g.coordinates) : g.type === "MultiPolygon" && g.coordinates.some(inPoly)); })?.properties || null;
 }
+// The listed places are numbered on the map; tapping a row (or a number on the map) picks it and shows it,
+// tapping the picked row again (or its arrow) opens the card (2026-11-08: rows used to open the card straight away,
+// which covered the map, so you never saw where anything was).
+let HERE = null; // { c, near: [{p, c, d}], sel }
+function hereSelect(i, { pan = true } = {}) {
+  if (!HERE) return;
+  HERE.sel = i;
+  MAP.setHere(HERE.c, HERE_M, HERE.near.map((x) => x.c), i);
+  document.querySelectorAll(".here-list .row").forEach((r, k) => { r.classList.toggle("is-sel", k === i); r.setAttribute("aria-pressed", k === i); });
+  const row = document.querySelectorAll(".here-list .row")[i];
+  row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  if (pan && i >= 0) {
+    const m = MAP.map, pt = m.project(HERE.near[i].c), p = m.getPadding(), h = m.getContainer().clientHeight, w = m.getContainer().clientWidth;
+    const out = pt.x < 30 || pt.x > w - 30 || pt.y < p.top + 20 || pt.y > h - p.bottom - 20;
+    if (out) m.easeTo({ center: HERE.near[i].c, duration: 400 });
+  }
+}
 function onMapClick(e) {
   if (!S.here) return vibeTap(e);
+  // A tap on one of the numbers picks that place instead of starting a new search.
+  const hit = HERE && MAP.map.queryRenderedFeatures(e.point, { layers: ["here-num"] })[0];
+  if (hit) return hereSelect(hit.properties.n - 1, { pan: false });
   const c = [e.lngLat.lng, e.lngLat.lat];
   MAP.setHere(c, HERE_M);
   // Keep the spot and its circle visible above the results panel.
@@ -762,7 +782,7 @@ function onMapClick(e) {
   const panel = $("#app").clientHeight * 0.56 - (mapH < $("#app").clientHeight ? $("#app").clientHeight - mapH : 0);
   MAP.map.easeTo({ center: c, zoom: 14.2, padding: { top: 110, bottom: Math.max(0, panel), left: 0, right: 0 }, duration: 500 });
   const near = PLACES.features
-    .map((f) => ({ p: f.properties, d: distM(c, f.geometry.coordinates) }))
+    .map((f) => ({ p: f.properties, c: f.geometry.coordinates, d: distM(c, f.geometry.coordinates) }))
     .filter((x) => x.d <= HERE_M)
     .sort((a, b) => tierRank[a.p.tier] - tierRank[b.p.tier] || b.p.score - a.p.score || a.d - b.d);
   const area = areaAt(c);
@@ -780,19 +800,29 @@ function onMapClick(e) {
       ${cls ? `<p class="here-vibe"><span class="tag vibe" style="--vibe: var(--vibe-${area.primary})">${esc(words)}</span></p><p class="here-feel">${esc(vibeFeel(area.primary, area.lifestyle))}</p>`
         : `<p class="here-feel">Out on the water, or outside the area we mapped.</p>`}
       <h3 class="section-title">${near.length ? `Best within a ${walk(HERE_M).replace(" walk", "")} walk` : "Nothing we've mapped close by"}</h3>
-      <ol class="here-list">${near.slice(0, 8).map((x, i) => `<li><button class="row" data-here-open="${esc(x.p.id)}">
+      ${near.length ? `<p class="hint left here-tip">Tap one to see it on the map, tap again to open it.</p>` : ""}
+      <ol class="here-list">${near.slice(0, 8).map((x, i) => `<li><div class="row" role="button" tabindex="0" aria-pressed="false" data-here-pick="${i}">
           <span class="rank">${i + 1}</span>${thumb(x.p, { pill: false, heart: false })}
-          <span class="row-txt"><span class="row-name">${esc(x.p.name)}</span><span class="row-sub">${esc(typeLabel(x.p))}${x.p.tier === "must-see" ? " · Must-see" : ""} · ${walk(x.d)}</span></span></button></li>`).join("")}</ol>
+          <span class="row-txt"><span class="row-name">${esc(x.p.name)}</span><span class="row-sub">${esc(typeLabel(x.p))}${x.p.tier === "must-see" ? " · Must-see" : ""} · ${walk(x.d)}</span></span>
+          <button class="here-open" data-here-open="${esc(x.p.id)}" aria-label="Open ${esc(x.p.name)}">${icon("chevronRight", 18)}</button></div></li>`).join("")}</ol>
       ${near.length > 8 ? `<p class="hint left">${near.length - 8} more on the map inside the circle.</p>` : ""}
     </div>`);
   $("#dialog").classList.add("is-sheet");
+  HERE = { c, near: near.slice(0, 8), sel: -1 };
+  hereSelect(-1, { pan: false });
   $("#dialog-card").onclick = (ev) => {
     const o = ev.target.closest("[data-here-open]");
     if (o) { closeHere(); openPlace(o.dataset.hereOpen); return; }
+    const pick = ev.target.closest("[data-here-pick]");
+    if (pick) {
+      const i = +pick.dataset.herePick;
+      if (HERE?.sel === i) { const id = HERE.near[i].p.id; closeHere(); openPlace(id); } else hereSelect(i);
+      return;
+    }
     if (ev.target.closest("[data-close-here]")) closeHere();
   };
 }
-function closeHere() { $("#dialog").hidden = true; $("#dialog").classList.remove("is-sheet"); $("#dialog-card").onclick = null; setSheet(S.sheet); }
+function closeHere() { if (HERE && S.here) MAP.setHere(HERE.c, HERE_M); HERE = null; /* keep the circle, drop the numbers */ $("#dialog").hidden = true; $("#dialog").classList.remove("is-sheet"); $("#dialog-card").onclick = null; setSheet(S.sheet); }
 
 // ---------- tabs ----------
 function showScreen(name) {

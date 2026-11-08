@@ -238,7 +238,7 @@ function setSheet(state) {
   sheet.dataset.state = state;
   sheet.style.setProperty("--sheet-h", `${h[state]}px`);
   document.documentElement.style.setProperty("--sheet-peek", `${state === "open" ? h.peek : h[state]}px`);
-  MAP.map.setPadding({ top: 110, bottom: state === "open" ? h.peek : h[state], left: 0, right: 0 });
+  MAP.map.setPadding({ top: 118, bottom: state === "open" ? h.peek : h[state], left: 0, right: 0 });
   $("#sheet-handle").setAttribute("aria-label", state === "closed" ? "Show the list" : "Drag or tap to resize the list");
   renderList();
 }
@@ -1071,6 +1071,7 @@ async function buildMap(camera) {
   if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
   if (camera) MAP.map.jumpTo(camera);
   wireNorth(MAP.map);
+  watchContext(MAP.map);
   MAP.map.on("moveend", () => renderList({ auto: true }));
   // Small spinner by the list title while the map moves or tiles load, so the list never looks stuck (2026-11-06).
   let busyT;
@@ -1084,6 +1085,32 @@ async function buildMap(camera) {
   const done = () => { clearTimeout(t); mapLoading(false); };
   const t = setTimeout(done, 8000);
   MAP.map.once("idle", done);
+}
+// Freeze recovery (2026-11-08): when an iPhone runs short of graphics memory (satellite tiles, fast zooming) it takes
+// the map's WebGL context away; the map then freezes on its last frame while the buttons still work. If the browser
+// doesn't hand it back within a moment, rebuild the map in place at the same view (at most 3 times a minute).
+let REBUILDS = [];
+function watchContext(map) {
+  let t;
+  map.on("webglcontextlost", () => {
+    clearTimeout(t);
+    t = setTimeout(async () => {
+      if (MAP.map !== map) return;
+      REBUILDS = REBUILDS.filter((x) => Date.now() - x < 60000);
+      if (REBUILDS.length >= 3) { toast("The map ran out of memory. Close and reopen the app."); return; }
+      REBUILDS.push(Date.now());
+      await rebuildMap();
+    }, 1200);
+  });
+  map.on("webglcontextrestored", () => clearTimeout(t));
+}
+async function rebuildMap() {
+  const camera = { center: MAP.map.getCenter(), zoom: MAP.map.getZoom(), bearing: MAP.map.getBearing() };
+  const vibe = S.vibe;
+  try { MAP.map.remove(); } catch { /* already gone */ }
+  await buildMap(camera);
+  refreshPlaces();
+  if (vibe) { S.vibe = null; setVibe(vibe); } else setSheet(S.sheet);
 }
 // Theme change: re-apply tokens and rebuild the maps in place (no page reload).
 async function switchTheme() {

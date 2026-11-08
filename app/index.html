@@ -48,12 +48,13 @@
       addEventListener("resize", setH);
       // No page zoom (2026-11-06, Cem): pinching a list or the splash zoomed the whole app and threw the layout off.
       // iOS ignores user-scalable=no in places, so block its pinch gestures and double-tap zoom too; the map has its own pinch.
-      ["gesturestart", "gesturechange", "gestureend"].forEach(function (t) {
-        document.addEventListener(t, function (e) { e.preventDefault(); }, { passive: false });
+      // (2026-11-08: no page-wide touchmove listener any more, and the map's own pinch is never touched;
+      // CSS touch-action: pan-x pan-y does the rest.)
+      ["gesturestart", "gesturechange"].forEach(function (t) {
+        document.addEventListener(t, function (e) {
+          if (!(e.target && e.target.closest && e.target.closest(".maplibregl-map"))) e.preventDefault();
+        }, { passive: false });
       });
-      document.addEventListener("touchmove", function (e) {
-        if (e.touches.length > 1 && !(e.target.closest && e.target.closest(".maplibregl-canvas-container"))) e.preventDefault();
-      }, { passive: false });
       addEventListener("orientationchange", function () { setTimeout(setH, 300); });
     })();
   </script>

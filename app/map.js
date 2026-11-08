@@ -66,6 +66,7 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     // Performance (2026-11-08): draw at most 2x (iPhones are 3x: the GL canvas was ~2.25x the pixels and memory,
     // a common reason iOS freezes or reloads a web app), and don't re-download cached tiles when they expire.
     pixelRatio: Math.min(window.devicePixelRatio || 1, 2), refreshExpiredTiles: false,
+    maxTileCacheSize: 80, maxTileCacheZoomLevels: 3, // fewer tiles (GPU textures) kept around: satellite tiles add up fast
     fadeDuration: 120, // short fade so collisions don't pop while zooming (selected pin ignores placement, so no blink)
   });
   map.keyboard.disableRotation?.();
@@ -329,7 +330,7 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
         // Shade sits under roads, buildings and labels (above land, parks and water), in theme colours.
         const above = baseLayerIds.find((l) => /road|tunnel|bridge|building|boundary|label|place|poi/.test(l)) || (map.getLayer("mask") ? "mask" : undefined);
         const dark = theme.basemap === "dark";
-        map.addSource("hills", { type: "raster-dem", tiles: [b.hillshade], tileSize: 256, maxzoom: b.max, encoding: "terrarium" });
+        map.addSource("hills", { type: "raster-dem", tiles: [b.hillshade], tileSize: 256, maxzoom: Math.min(b.max, 12), encoding: "terrarium" }); // z12 DEM, over-zoomed: same look, far less memory
         map.addLayer({ id: "hills", type: "hillshade", source: "hills", paint: {
           "hillshade-exaggeration": 0.75, "hillshade-illumination-direction": 315,
           "hillshade-shadow-color": dark ? "black" : cssVar("--c-ink-2"),

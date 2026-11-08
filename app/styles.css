@@ -730,3 +730,5 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .here-list .row.is-sel .here-open { color: var(--c-accent); background: var(--c-surface); box-shadow: var(--shadow-sm); }
 /* What's here on: no filter chips (more map for the circle) */
 .app.is-here .chips { display: none; }
+/* The list sheet steps aside while the What's here panel is open (a short panel showed it behind, over the circle) */
+.app:has(.dialog.is-sheet:not([hidden])) .sheet { visibility: hidden; }

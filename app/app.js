@@ -777,7 +777,7 @@ function hereSelect(i, { pan = true } = {}) {
     // Only move if the pick is hidden behind the search bar, the buttons or the panel; then centre it in the gap.
     const m = MAP.map, box = m.getContainer().getBoundingClientRect(), pt = m.project(HERE.near[i].c);
     const top = $(".search-wrap").getBoundingClientRect().bottom - box.top + 10;
-    const bottom = $("#dialog-card").getBoundingClientRect().top - box.top - 12;
+    const bottom = $("#dialog").getBoundingClientRect().bottom - $("#dialog-card").offsetHeight - box.top - 12; // final panel top
     if (pt.x < 20 || pt.x > box.width - 68 || pt.y < top || pt.y > bottom) {
       m.easeTo({ center: HERE.near[i].c, padding: { top, bottom: box.height - bottom, left: 16, right: 68 }, duration: 400 });
     }
@@ -798,7 +798,9 @@ function onMapClick(e) {
 function fitHere(c) {
   const m = MAP.map, box = m.getContainer().getBoundingClientRect();
   const top = $(".search-wrap").getBoundingClientRect().bottom - box.top + 10;
-  const cardTop = $("#dialog-card").getBoundingClientRect().top;
+  // Final panel top: the card slides up as it opens, so its current position is too low; use its height instead
+  // (offsetHeight ignores the slide-in transform) from the bottom of the dialog layer.
+  const cardTop = $("#dialog").getBoundingClientRect().bottom - $("#dialog-card").offsetHeight;
   const bottom = Math.max(0, box.bottom - cardTop + 12);
   const dx = HERE_M / 84000, dy = HERE_M / 111100;
   // fitBounds adds the map's own padding (kept for the list sheet) to this one: together they were taller than the
@@ -843,7 +845,7 @@ function showHere(c, { sel = -1, fit = true } = {}) {
   HERE = { c, near: near.slice(0, 8), sel: -1 };
   hereSelect(sel, { pan: false });
   if (fit) fitHere(c);
-  const open = (i) => { HERE_BACK = { c, sel: i }; const id = HERE.near[i].p.id; closeHere(); openPlace(id); };
+  const open = (i) => { HERE_BACK = { c, sel: i }; const id = HERE.near[i].p.id; closeHere({ recentre: false }); openPlace(id); };
   $("#dialog-card").onclick = (ev) => {
     const o = ev.target.closest("[data-here-open]");
     if (o) { ev.stopPropagation(); open(+o.dataset.hereOpen); return; }
@@ -858,8 +860,9 @@ function showHere(c, { sel = -1, fit = true } = {}) {
 }
 // Hides the panel only: the circle and the numbers stay on the map (tap a number to bring the panel back),
 // until the What's here button is turned off (2026-11-08).
-function closeHere() {
+function closeHere({ recentre = true } = {}) {
   $("#dialog").hidden = true; $("#dialog").classList.remove("is-sheet"); $("#dialog-card").onclick = null; setSheet(S.sheet);
+  if (recentre && HERE && S.here) MAP.map.easeTo({ center: HERE.c, duration: 400 }); // circle back into the space above the list
 }
 
 // ---------- tabs ----------

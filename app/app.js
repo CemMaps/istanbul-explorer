@@ -353,7 +353,10 @@ function openPlace(id) {
     <div class="place-body">
       <h1 id="place-name">${esc(p.name)}</h1>
       ${p.name_tr && p.name_tr !== p.name ? `<div class="name-tr" lang="tr">${esc(p.name_tr)}</div>` : ""}
-      <a class="gmaps" href="https://www.google.com/maps/search/?api=1&query=${coord[1]},${coord[0]}" target="_blank" rel="noopener"><img src="icons/google-maps.png" alt="" width="20" height="20"> Open in Google Maps</a>
+      <div class="place-actions">
+        <button class="gmaps show-map" data-show-map="${esc(id)}">${icon("pin", 18)} Show on map</button>
+        <a class="gmaps" href="https://www.google.com/maps/search/?api=1&query=${coord[1]},${coord[0]}" target="_blank" rel="noopener"><img src="icons/google-maps.png" alt="" width="20" height="20"> Google Maps</a>
+      </div>
       ${about ? `<p class="blurb">${esc(about)}</p>` : ""}
       ${p.tip ? `<p class="blurb">${esc(p.tip)}</p>` : ""}
       <h2 class="section-title">Add to a day</h2>
@@ -389,8 +392,21 @@ function openViewer(photos, start) {
   track.addEventListener("scroll", () => { if (count) count.textContent = `${Math.round(track.scrollLeft / track.clientWidth) + 1} / ${photos.length}`; }, { passive: true });
   v.addEventListener("click", () => v.remove());
 }
+// "Show on map" (2026-11-08): close the card, go to Explore and fly to the place, highlighted.
+function showOnMap(id) {
+  const f = BYID[id];
+  if (!f) return;
+  HERE_BACK = null;
+  if (!$("#screen-explore").classList.contains("is-active")) showScreen("explore");
+  if (!$("#place").hidden) closePlace();
+  if (S.sheet === "open") setSheet("peek");
+  MAP.map.flyTo({ center: f.geometry.coordinates, zoom: Math.max(MAP.map.getZoom(), 16), duration: 900 });
+  setTimeout(() => { S.selected = id; MAP.select(id); }, 260); // after the card's close fade
+}
 $("#place").addEventListener("click", (e) => {
   if (e.target.closest("[data-close]")) return closePlace();
+  const sm = e.target.closest("[data-show-map]");
+  if (sm) return showOnMap(sm.dataset.showMap);
   const z = e.target.closest("[data-zoom]");
   if (z) return openViewer(BYID[S.selected].properties.photos, +z.dataset.zoom);
   if (e.target.closest("[data-share-place]")) return sharePlace(S.selected);
@@ -826,12 +842,14 @@ function showHere(c, { sel = -1, fit = true } = {}) {
   const words = area ? vibeWords(area.primary, area.secondary, area.lifestyle) : "";
   const walk = (d) => `${Math.max(1, Math.round((d * 1.25) / 80))} min walk`;
   openDialog(`<div class="here-card">
+      <div class="here-top">
       <div class="here-head">
         <div><small>What's here</small><h2>${esc(where)}</h2></div>
         <button class="icon-btn small" data-close-here aria-label="Close">${icon("close")}</button>
       </div>
       ${cls ? `<p class="here-vibe"><span class="tag vibe" style="--vibe: var(--vibe-${area.primary})">${esc(words)}</span></p><p class="here-feel">${esc(vibeFeel(area.primary, area.lifestyle))}</p>`
         : `<p class="here-feel">Out on the water, or outside the area we mapped.</p>`}
+      </div>
       <h3 class="section-title">${near.length ? `Best within a ${walk(HERE_M).replace(" walk", "")} walk` : "Nothing we've mapped close by"}</h3>
       ${near.length ? `<p class="hint left here-tip">Tap one to see it on the map, tap again to open it.</p>` : ""}
       <ol class="here-list">${near.slice(0, 8).map((x, i) => `<li><div class="row" role="button" tabindex="0" aria-pressed="false" data-here-pick="${i}">
@@ -1127,7 +1145,20 @@ $("#screen-plan").addEventListener("click", (e) => {
   const a = e.target.closest("[data-plan-add]");
   if (a) { store.addTo(S.planRoute, a.dataset.planAdd); renderPlan(); renderMapRoutes(); }
 });
-store.on(() => { if (MAP) renderMapRoutes(); });
+// Day badges on the map for every planned place, whatever the filter (2026-11-08).
+function renderPlanned() {
+  if (!MAP || !BYID) return;
+  const seen = new Set(), feats = [];
+  for (const r of store.routes()) for (const id of r.ids) {
+    const f = BYID[id];
+    if (!f || seen.has(id)) continue;
+    seen.add(id);
+    const day = r.day.charAt(0).toUpperCase() + r.day.slice(1, 3); // "fri" -> "Fri"
+    feats.push({ type: "Feature", properties: { id, day, colkey: f.properties.colkey || f.properties.category }, geometry: f.geometry });
+  }
+  MAP.setPlanned({ type: "FeatureCollection", features: feats });
+}
+store.on(() => { if (MAP) { renderMapRoutes(); renderPlanned(); } });
 
 // Loading veil over the map until the first tiles and pins have drawn (or 8 s, whichever comes first).
 function mapLoading(on) {
@@ -1154,6 +1185,7 @@ async function buildMap(camera) {
   MAP.map.on("click", onMapClick);
   applyBase();
   renderMapRoutes();
+  renderPlanned();
   const done = () => { clearTimeout(t); mapLoading(false); };
   const t = setTimeout(done, 8000);
   MAP.map.once("idle", done);

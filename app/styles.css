@@ -732,3 +732,11 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .app.is-here .chips { display: none; }
 /* The list sheet steps aside while the What's here panel is open (a short panel showed it behind, over the circle) */
 .app:has(.dialog.is-sheet:not([hidden])) .sheet { visibility: hidden; }
+
+/* What's here: the title, vibe and ✕ stay put while the list scrolls (2026-11-08) */
+.here-top { position: sticky; top: -22px; z-index: 3; margin: -22px calc(-1 * var(--gutter)) 0; padding: 22px var(--gutter) 10px; background: var(--c-surface); border-bottom: 1px solid var(--c-line); }
+/* Place card: Show on map + Google Maps side by side */
+.place-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.place-actions .gmaps { margin-top: 0; }
+.show-map { cursor: pointer; }
+.show-map .ico { color: var(--c-primary); }

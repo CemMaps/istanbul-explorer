@@ -212,6 +212,20 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     placeLayers.push(`pins-${tier}`, `areas-${tier}`);
   }
 
+  // Planned places (2026-11-08): every place added to a day shows as a round badge in its category colour with the
+  // day inside ("Fri"), whatever filter or search is on. Its own source, fed from the saved routes (app.js).
+  map.addSource("planned", { type: "geojson", data: { type: "FeatureCollection", features: [] } });
+  map.addLayer({ id: "planned-dot", type: "circle", source: "planned",
+    paint: { "circle-color": catColor, "circle-radius": ["interpolate", ["linear"], ["zoom"], 10, 10, 14, 13, 17, 15],
+             "circle-stroke-color": bg, "circle-stroke-width": 2.2 } });
+  map.addLayer({ id: "planned-txt", type: "symbol", source: "planned",
+    layout: { "text-field": ["get", "day"], "text-font": FONT_BOLD, "text-size": ["interpolate", ["linear"], ["zoom"], 10, 8.5, 14, 10.5, 17, 12],
+              "text-allow-overlap": true, "text-ignore-placement": true, "text-letter-spacing": 0.02 },
+    paint: { "text-color": cssVar("--c-ink-inverse") } });
+  map.on("click", "planned-dot", (e) => onPlace(e.features[0].properties.id));
+  map.on("mouseenter", "planned-dot", () => (map.getCanvas().style.cursor = "pointer"));
+  map.on("mouseleave", "planned-dot", () => (map.getCanvas().style.cursor = ""));
+
   // Selected place: filled, bigger, always labelled.
   map.addLayer({ id: "selected", type: "symbol", source: "places", filter: ["==", ["get", "id"], ""],
     layout: { "icon-image": ["concat", "pin-", ["get", "catslug"], "-sel"], "icon-size": 1.15, "icon-allow-overlap": true, "icon-ignore-placement": true, "text-ignore-placement": true,
@@ -257,7 +271,7 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
   for (const id of dotLayers) {
     // A tap on a dot zooms in to where its icon shows (or opens it if we're already close).
     map.on("click", id, (e) => {
-      if (map.queryRenderedFeatures(e.point, { layers: [...placeLayers, "selected"] }).length) return; // icon handles it
+      if (map.queryRenderedFeatures(e.point, { layers: [...placeLayers, "selected", "planned-dot"] }).length) return; // icon or day badge handles it
       const f = e.features[0];
       const target = config.tiers[f.properties.tier].minzoom + 0.4;
       if (map.getZoom() >= target - 0.2) onPlace(f.properties.id);
@@ -267,7 +281,10 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
   }
   for (const id of [...placeLayers, "selected"]) {
-    map.on("click", id, (e) => onPlace(e.features[0].properties.id));
+    map.on("click", id, (e) => {
+      if (id !== "selected" && map.queryRenderedFeatures(e.point, { layers: ["planned-dot"] }).length) return; // the day badge on top wins
+      onPlace(e.features[0].properties.id);
+    });
     map.on("mouseenter", id, () => (map.getCanvas().style.cursor = "pointer"));
     map.on("mouseleave", id, () => (map.getCanvas().style.cursor = ""));
   }
@@ -318,6 +335,7 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
       map.getSource("here").setData({ type: "FeatureCollection", features: feats });
     },
     setPlaces: (fc) => map.getSource("places").setData(fc),
+    setPlanned: (fc) => map.getSource("planned").setData(fc),
     // Selecting shows the filled pin at once; deselecting fades it out (no flash when a card closes).
     select(id) {
       clearTimeout(selT);

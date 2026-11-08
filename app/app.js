@@ -238,7 +238,7 @@ function setSheet(state) {
   sheet.dataset.state = state;
   sheet.style.setProperty("--sheet-h", `${h[state]}px`);
   document.documentElement.style.setProperty("--sheet-peek", `${state === "open" ? h.peek : h[state]}px`);
-  MAP.map.setPadding({ top: 118, bottom: state === "open" ? h.peek : h[state], left: 0, right: 0 });
+  MAP.map.setPadding({ top: 130, bottom: state === "open" ? h.peek : h[state], left: 0, right: 0 });
   $("#sheet-handle").setAttribute("aria-label", state === "closed" ? "Show the list" : "Drag or tap to resize the list");
   renderList();
 }
@@ -433,6 +433,9 @@ function closePlace() {
   S.selected = null; MAP.select(null);
   history.replaceState(null, "", location.pathname + location.search);
   renderList();
+  // Opened from What's here: back goes back to that panel, same spot, same pick (2026-11-08).
+  if (HERE_BACK && S.here) { const b = HERE_BACK; HERE_BACK = null; showHere(b.c, { sel: b.sel }); } // re-frame: opening the place moved the map
+  HERE_BACK = null;
 }
 document.addEventListener("keydown", (e) => {
   if (e.key !== "Escape") return;
@@ -741,7 +744,7 @@ function setHereMode(on) {
   $("#btn-here").setAttribute("aria-pressed", on);
   $("#here-hint").hidden = !on;
   MAP.map.getCanvas().style.cursor = on ? "crosshair" : "";
-  if (!on) MAP.setHere(null);
+  if (!on) { MAP.setHere(null); HERE_BACK = null; }
 }
 $("#btn-here").addEventListener("click", () => setHereMode(!S.here));
 function areaAt(c) {
@@ -765,9 +768,13 @@ function hereSelect(i, { pan = true } = {}) {
   const row = document.querySelectorAll(".here-list .row")[i];
   row?.scrollIntoView({ block: "nearest", behavior: "smooth" });
   if (pan && i >= 0) {
-    const m = MAP.map, pt = m.project(HERE.near[i].c), p = m.getPadding(), h = m.getContainer().clientHeight, w = m.getContainer().clientWidth;
-    const out = pt.x < 30 || pt.x > w - 30 || pt.y < p.top + 20 || pt.y > h - p.bottom - 20;
-    if (out) m.easeTo({ center: HERE.near[i].c, duration: 400 });
+    // Only move if the pick is hidden behind the search bar, the buttons or the panel; then centre it in the gap.
+    const m = MAP.map, box = m.getContainer().getBoundingClientRect(), pt = m.project(HERE.near[i].c);
+    const top = $(".search-wrap").getBoundingClientRect().bottom - box.top + 10;
+    const bottom = $("#dialog-card").getBoundingClientRect().top - box.top - 12;
+    if (pt.x < 20 || pt.x > box.width - 68 || pt.y < top || pt.y > bottom) {
+      m.easeTo({ center: HERE.near[i].c, padding: { top, bottom: box.height - bottom, left: 16, right: 68 }, duration: 400 });
+    }
   }
 }
 function onMapClick(e) {
@@ -775,13 +782,28 @@ function onMapClick(e) {
   // A tap on one of the numbers picks that place instead of starting a new search.
   const hit = HERE && MAP.map.queryRenderedFeatures(e.point, { layers: ["here-num"] })[0];
   if (hit) return hereSelect(hit.properties.n - 1, { pan: false });
-  const c = [e.lngLat.lng, e.lngLat.lat];
+  showHere([e.lngLat.lng, e.lngLat.lat]);
+}
+// Frame the whole circle in the part of the map you can actually see: below the search bar and chips, left of the
+// round buttons, above the results panel (2026-11-08: it was zoomed in too far to see the circle).
+function fitHere(c) {
+  const m = MAP.map, box = m.getContainer().getBoundingClientRect();
+  const top = $(".search-wrap").getBoundingClientRect().bottom - box.top + 10;
+  const cardTop = $("#dialog-card").getBoundingClientRect().top;
+  const bottom = Math.max(0, box.bottom - cardTop + 12);
+  const dx = HERE_M / 84000, dy = HERE_M / 111100;
+  // fitBounds adds the map's own padding (kept for the list sheet) to this one: together they were taller than the
+  // screen and MapLibre silently didn't move. Clear it first; closeHere() → setSheet() puts it back.
+  m.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
+  m.fitBounds([[c[0] - dx, c[1] - dy], [c[0] + dx, c[1] + dy]], { padding: { top, bottom, left: 16, right: 68 }, maxZoom: 15.5, duration: 500 });
+}
+let HERE_BACK = null; // the panel to come back to after opening a place from it
+function showHere(c, { sel = -1, fit = true } = {}) {
+  $("#here-hint").hidden = true; // done its job; it covered the map (2026-11-08)
   MAP.setHere(c, HERE_M);
-  // Keep the spot and its circle visible above the results panel.
-  const mapH = MAP.map.getContainer().clientHeight;
-  const panel = $("#app").clientHeight * 0.56 - (mapH < $("#app").clientHeight ? $("#app").clientHeight - mapH : 0);
-  MAP.map.easeTo({ center: c, zoom: 14.2, padding: { top: 110, bottom: Math.max(0, panel), left: 0, right: 0 }, duration: 500 });
+  // Neighbourhoods are left out: their names are on the map already (2026-11-08).
   const near = PLACES.features
+    .filter((f) => !f.properties.asLabel && f.properties.category !== "Neighbourhoods")
     .map((f) => ({ p: f.properties, c: f.geometry.coordinates, d: distM(c, f.geometry.coordinates) }))
     .filter((x) => x.d <= HERE_M)
     .sort((a, b) => tierRank[a.p.tier] - tierRank[b.p.tier] || b.p.score - a.p.score || a.d - b.d);
@@ -804,28 +826,36 @@ function onMapClick(e) {
       <ol class="here-list">${near.slice(0, 8).map((x, i) => `<li><div class="row" role="button" tabindex="0" aria-pressed="false" data-here-pick="${i}">
           <span class="rank">${i + 1}</span>${thumb(x.p, { pill: false, heart: false })}
           <span class="row-txt"><span class="row-name">${esc(x.p.name)}</span><span class="row-sub">${esc(typeLabel(x.p))}${x.p.tier === "must-see" ? " · Must-see" : ""} · ${walk(x.d)}</span></span>
-          <button class="here-open" data-here-open="${esc(x.p.id)}" aria-label="Open ${esc(x.p.name)}">${icon("chevronRight", 18)}</button></div></li>`).join("")}</ol>
+          <button class="here-open" data-here-open="${i}" aria-label="Open ${esc(x.p.name)}">${icon("chevronRight", 18)}</button></div></li>`).join("")}</ol>
       ${near.length > 8 ? `<p class="hint left">${near.length - 8} more on the map inside the circle.</p>` : ""}
     </div>`);
   $("#dialog").classList.add("is-sheet");
+  $("#dialog-card").scrollTop = 0; // a new spot starts at the top (it kept the last scroll position)
   HERE = { c, near: near.slice(0, 8), sel: -1 };
-  hereSelect(-1, { pan: false });
+  hereSelect(sel, { pan: false });
+  if (fit) fitHere(c);
+  const open = (i) => { HERE_BACK = { c, sel: i }; const id = HERE.near[i].p.id; closeHere({ keepNumbers: true }); openPlace(id); };
   $("#dialog-card").onclick = (ev) => {
     const o = ev.target.closest("[data-here-open]");
-    if (o) { closeHere(); openPlace(o.dataset.hereOpen); return; }
+    if (o) { ev.stopPropagation(); open(+o.dataset.hereOpen); return; }
     const pick = ev.target.closest("[data-here-pick]");
     if (pick) {
       const i = +pick.dataset.herePick;
-      if (HERE?.sel === i) { const id = HERE.near[i].p.id; closeHere(); openPlace(id); } else hereSelect(i);
+      if (HERE?.sel === i) open(i); else hereSelect(i);
       return;
     }
     if (ev.target.closest("[data-close-here]")) closeHere();
   };
 }
-function closeHere() { if (HERE && S.here) MAP.setHere(HERE.c, HERE_M); HERE = null; /* keep the circle, drop the numbers */ $("#dialog").hidden = true; $("#dialog").classList.remove("is-sheet"); $("#dialog-card").onclick = null; setSheet(S.sheet); }
+function closeHere({ keepNumbers = false } = {}) {
+  if (HERE && S.here && !keepNumbers) MAP.setHere(HERE.c, HERE_M); // keep the circle, drop the numbers
+  HERE = null;
+  $("#dialog").hidden = true; $("#dialog").classList.remove("is-sheet"); $("#dialog-card").onclick = null; setSheet(S.sheet);
+}
 
 // ---------- tabs ----------
 function showScreen(name) {
+  HERE_BACK = null;
   document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("is-active", x.dataset.screen === name));
   document.querySelectorAll(".screen").forEach((s) => s.classList.toggle("is-active", s.id === `screen-${name}`));
   if (!$("#place").hidden) closePlace();

@@ -1,7 +1,7 @@
 // Offline support: the app shell, data and pinned CDN libraries are cached on first visit.
 // Same-origin files: network first (so updates arrive), cache as fallback.
 // CDN libs, fonts, Commons photos and map tiles: cache first, filled as you browse (tiles capped).
-const VERSION = "oit-v34";
+const VERSION = "oit-v35";
 const SHELL = [
   "./", "index.html", "styles.css", "app.js", "map.js", "theme.js", "icons.js", "store.js", "sky.js", "routes.js", "share.js", "splash.js",
   "config.json", "theme.json", "manifest.webmanifest", "icons/favicon-32.png", "icons/favicon-64.png", "themes/index.json",
@@ -10,7 +10,7 @@ const SHELL = [
   "../data/places.geojson", "../data/study_mask.geojson", "../data/ferries.geojson", "../data/stops.geojson", "../data/fixed.geojson", "../data/areas.geojson",
 ];
 const TILE_LIMIT = 3000;
-const EXT_LIMIT = 800; // photos, fonts, libraries, routing (2026-11-08: was unbounded)
+const EXT_LIMIT = 2500; // photos, fonts, libraries, routing (2026-11-08: was unbounded; 800 evicted photos you had just seen)
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => c.addAll(SHELL)).then(() => self.skipWaiting()));

@@ -132,6 +132,6 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo, dayPlan }) {
   const go = el.querySelector("#sp-go");
   go.addEventListener("click", () => {
     el.classList.add("is-leaving");
-    setTimeout(() => { el.hidden = true; onGo?.(); }, 900);
+    setTimeout(() => { el.hidden = true; el.innerHTML = ""; onGo?.(); }, 900); // free the big photo; renderSplash rebuilds it
   }, { once: true });
 }

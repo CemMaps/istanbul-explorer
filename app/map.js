@@ -53,68 +53,6 @@ function setRouteData(map, lines, stops) {
   map.getSource("route-stops").setData(stops);
 }
 
-// Frosted veil outside the study area. `rings` = the study area's outer ring(s) in [lng, lat].
-// The mask is drawn on a quarter-size canvas (soft anyway) each frame the map moves: opaque everywhere,
-// with the study area cut out through a shadow blur, so the cut-out has a feathered edge that starts
-// at the outline and reaches full blur ~1.6 km further out. The shadow trick works on iOS Safari too
-// (canvas `filter` doesn't).
-function frostOutside(map, rings) {
-  const veil = document.createElement("div");
-  veil.className = "map-veil";
-  map.getCanvasContainer().after(veil);
-  const cv = document.createElement("canvas");
-  const ctx = cv.getContext("2d", { willReadFrequently: true });
-  // CLEAR_PX: a clear band just outside the line, so labels of places near the edge stay sharp (2026-11-06).
-  const Q = 4, FEATHER_M = 1600, OFF = 4000, CLEAR_PX = 12;
-  let raf = 0;
-  const draw = () => {
-    raf = 0;
-    const { clientWidth: w, clientHeight: h } = map.getContainer();
-    if (!w || !h) return; // map hidden (another tab is showing)
-    cv.width = Math.ceil(w / Q); cv.height = Math.ceil(h / Q);
-    const c = map.getCenter();
-    const mPerPx = (40075016 * Math.cos((c.lat * Math.PI) / 180)) / (512 * 2 ** map.getZoom());
-    const f = Math.min(Math.max(FEATHER_M / mPerPx, 14), 120) / Q; // feather in small-canvas px
-    ctx.globalCompositeOperation = "source-over";
-    ctx.fillStyle = "black"; // mask alpha only, never shown
-    ctx.fillRect(0, 0, cv.width, cv.height);
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.beginPath();
-    for (const ring of rings) ring.forEach((ll, i) => {
-      const p = map.project(ll);
-      ctx[i ? "lineTo" : "moveTo"](p.x / Q + OFF, p.y / Q);
-    });
-    ctx.closePath();
-    // Draw the shape far off-canvas and let only its blurred shadow land on the canvas; a stroke grows it
-    // first (by CLEAR_PX + f/2), so the fade starts a little outside the outline instead of across it.
-    ctx.shadowColor = "black"; ctx.shadowBlur = f; ctx.shadowOffsetX = -OFF;
-    ctx.lineWidth = f + (2 * CLEAR_PX) / Q; ctx.lineJoin = "round";
-    ctx.fill(); ctx.stroke();
-    ctx.shadowBlur = 0; ctx.shadowOffsetX = 0;
-    const px = ctx.getImageData(0, 0, cv.width, cv.height).data;
-    let any = false;
-    for (let i = 3; i < px.length; i += 16) if (px[i] > 8) { any = true; break; }
-    if (!any) { veil.hidden = true; hideAt = ++seq; return; } // zoomed in well inside the area: no veil, no blur cost
-    // Flicker fix (2026-11-06): a new mask image decodes asynchronously, and meanwhile the veil showed with an older
-    // mask (or, after being hidden, one from another view), so the whole map blurred for a frame. Decode first, then
-    // swap; the veil is only unhidden once it carries a mask for this view.
-    const url = cv.toDataURL(), my = ++seq;
-    const img = new Image();
-    img.src = url;
-    (img.decode ? img.decode() : Promise.resolve()).catch(() => {}).then(() => {
-      if (my < applied || my < hideAt) return; // an older frame, or the view moved fully inside since
-      applied = my;
-      veil.style.webkitMaskImage = veil.style.maskImage = `url(${url})`;
-      if (veil.hidden) requestAnimationFrame(() => { if (applied === my && my > hideAt) veil.hidden = false; });
-    });
-  };
-  let seq = 0, applied = 0, hideAt = 0;
-  const queue = () => { if (!raf) raf = requestAnimationFrame(draw); };
-  map.on("move", draw); map.on("resize", queue); // same frame as the map, so the veil never lags
-  map.on("remove", () => { cancelAnimationFrame(raf); veil.remove(); }); // theme switch rebuilds the map: no stale veil
-  draw();
-}
-
 export async function createMap({ container, theme, config, data, onPlace, onStop }) {
   const map = new maplibregl.Map({
     container,
@@ -125,6 +63,9 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     // 2026-11-06 (Cem): no 3D tilt (glitchy, and it kept the edge blur redrawing); rotation is allowed,
     // with a north button that shows only while the map is turned (app.js).
     maxPitch: 0, pitchWithRotate: false, touchPitch: false, dragRotate: true,
+    // Performance (2026-11-08): draw at most 2x (iPhones are 3x: the GL canvas was ~2.25x the pixels and memory,
+    // a common reason iOS freezes or reloads a web app), and don't re-download cached tiles when they expire.
+    pixelRatio: Math.min(window.devicePixelRatio || 1, 2), refreshExpiredTiles: false,
     fadeDuration: 120, // short fade so collisions don't pop while zooming (selected pin ignores placement, so no blink)
   });
   map.keyboard.disableRotation?.();
@@ -162,18 +103,17 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
   map.addImage("pin-home", await pinImage("home", navy, bg, dark ? { filled: true, inkColor: cssVar("--c-ink-inverse"), ring: cssVar("--c-ink-inverse") } : { filled: true }), { pixelRatio: 2 });
   map.addImage("pin-airport", await pinImage("plane", navy, bg, { filled: true }), { pixelRatio: 2 });
 
-  // Outside the study area: frosted glass that fades in (2026-11-06, Cem: "a gradient of blurriness, no outline").
-  // A DOM layer over the map canvas blurs what is behind it (backdrop-filter); its mask is the study area,
-  // feathered, so the blur and the milky tint grow gradually past the edge. Browsers without backdrop-filter
-  // fall back to the plain milky fill below.
-  map.addSource("mask", { type: "geojson", data: data.mask });
-  const frosted = CSS.supports("backdrop-filter", "blur(2px)") || CSS.supports("-webkit-backdrop-filter", "blur(2px)");
-  map.addLayer({ id: "mask", type: "fill", source: "mask",
-    paint: { "fill-color": cssVar("--c-surface"), "fill-opacity": frosted ? 0.18 : Math.max(theme.maskOpacity ?? 0.7, 0.78) } });
+  // Outside the study area (2026-11-08): a static, feathered milky tint drawn by the map itself.
+  // data/study_mask.geojson (scripts/11_mask_feather.py) holds a clear strip just outside the line, rings that get
+  // milkier out to ~1.6 km, then a solid tint; each feature's `a` is its share of the full tint. It replaced a
+  // per-frame DOM blur (canvas -> PNG -> CSS mask on every move) that flickered and froze iPhones after a while.
+  map.addSource("mask", { type: "geojson", data: data.mask, tolerance: 0.6 });
+  const full = Math.max(theme.maskOpacity ?? 0.7, 0.7);
+  map.addLayer({ id: "mask", type: "fill", source: "mask", filter: ["has", "a"],
+    paint: { "fill-color": cssVar("--c-surface"), "fill-opacity": ["*", full, ["get", "a"]], "fill-antialias": false } });
   // A very light outline, so the eye has an edge to rest on (2026-11-06).
-  map.addLayer({ id: "mask-edge", type: "line", source: "mask",
+  map.addLayer({ id: "mask-edge", type: "line", source: "mask", filter: ["has", "edge"],
     paint: { "line-color": cssVar("--c-ink-2"), "line-width": 1, "line-opacity": 0.18 } });
-  if (frosted) frostOutside(map, data.mask.features[0].geometry.coordinates.slice(1));
 
   // Vibe map: soft translucent fill under everything, off by default (character or lifestyle colouring).
   map.addSource("areas", { type: "geojson", data: data.areas || { type: "FeatureCollection", features: [] } });

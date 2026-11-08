@@ -202,8 +202,15 @@ function inViewPlaces() {
     .map((f) => ({ p: f.properties, c: f.geometry.coordinates, d: distM(ref, f.geometry.coordinates) }))
     .sort((a, b) => (S.near ? a.d - b.d : tierRank[a.p.tier] - tierRank[b.p.tier] || b.p.score - a.p.score));
 }
-function renderList() {
+// Performance (2026-11-08): after a pan the list is rebuilt only if what it shows changed, and the long list
+// (up to 150 rows with photos) only while the sheet is open; setSheet("open") builds it.
+let LIST_KEY = "";
+function renderList(opts) {
+  const auto = opts?.auto;
   const items = inViewPlaces();
+  const key = [S.sheet, S.near, S.query, S.chip, MAP.map.getZoom() < 11.8, items.length, ...items.slice(0, S.sheet === "open" ? 150 : 12).map((x) => x.p.id)].join("|");
+  if (auto && key === LIST_KEY) return;
+  LIST_KEY = key;
   // Always "in view" (2026-11-06, Cem: "Top picks in Istanbul" read as inconsistent). Zoomed right out, nudge to zoom in.
   const city = MAP.map.getZoom() < 11.8;
   $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${(({ title, label }) => title || label)(CFG.chips.find((c) => c.id === S.chip))} in view` : "Top picks in view"; // zoomed out, the sheet bar says "zoom in to explore an area"
@@ -211,7 +218,7 @@ function renderList() {
   $("#cards").innerHTML = items.length
     ? items.slice(0, 12).map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p)}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${sub(x)}</div></button>`).join("")
     : `<p class="empty">Nothing here with these filters. Zoom out or clear the search.</p>`;
-  $("#list").innerHTML = items.slice(0, 150).map((x) => `<button class="row" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false })}
+  if (S.sheet !== "open") $("#list").innerHTML = ""; else $("#list").innerHTML = items.slice(0, 150).map((x) => `<button class="row" data-open="${esc(x.p.id)}">${thumb(x.p, { pill: false, heart: false })}
       <div class="row-txt"><div class="row-name">${esc(x.p.name)}</div><div class="row-sub">${esc(typeLabel(x.p))} · ${sub(x)}</div></div></button>`).join("")
     || `<p class="empty">Nothing in view.</p>`;
   $("#sheet-toggle").textContent = S.sheet === "open" ? "Show map" : `See all ${items.length}`;
@@ -1064,7 +1071,7 @@ async function buildMap(camera) {
   if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
   if (camera) MAP.map.jumpTo(camera);
   wireNorth(MAP.map);
-  MAP.map.on("moveend", renderList);
+  MAP.map.on("moveend", () => renderList({ auto: true }));
   // Small spinner by the list title while the map moves or tiles load, so the list never looks stuck (2026-11-06).
   let busyT;
   const busy = (on) => { clearTimeout(busyT); if (on) busyT = setTimeout(() => ($("#list-busy").hidden = false), 150); else $("#list-busy").hidden = true; };

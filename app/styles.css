@@ -549,12 +549,6 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .share-card::after { display: none; }
 .share-card h2 { text-shadow: 0 1px 10px color-mix(in srgb, var(--c-navy) 60%, transparent); }
 
-/* Frosted glass outside the study area: blur + milky tint, masked by a feathered study-area cut-out (map.js) */
-.map-veil { position: absolute; inset: 0; z-index: 1; pointer-events: none;
-  background: color-mix(in srgb, var(--c-surface) 58%, transparent);
-  -webkit-backdrop-filter: blur(3px) saturate(.7); backdrop-filter: blur(3px) saturate(.7);
-  -webkit-mask-size: 100% 100%; mask-size: 100% 100%; -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat; }
-.map-veil[hidden] { display: none; }
 
 /* Routes, rebuilt (2026-11-06): segmented days, a quiet header, a plain timeline, no mini map */
 .day-seg { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; padding: 3px; border-radius: 14px; background: var(--c-surface-2); margin: 0 0 18px; }

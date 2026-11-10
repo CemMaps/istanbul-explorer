@@ -48,7 +48,8 @@ export function applyTheme(t) {
     link.rel = "stylesheet";
     document.head.appendChild(link);
   }
-  link.href = `https://fonts.googleapis.com/css2?${t.fonts.googleFonts}&display=swap`;
+  const href = `https://fonts.googleapis.com/css2?${t.fonts.googleFonts}&display=swap`;
+  if (link.getAttribute("href") !== href) link.href = href; // index.html already asks for the default font
   document.title = t.app.name;
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.content = t.colors.navy;

@@ -6,6 +6,7 @@ import { tripStatus, sunTimes, forecast, fmtTime, istanbulToday, istMinutes } fr
 import { order, legMode, legsGeometry } from "./routes.js";
 import { renderSplash, updateSplashForecast, badgeText, countdownCard, SPLASH_CREDIT } from "./splash.js";
 import { indexCodes, importFromHash, shareMyPicks, people, mergeIntoMine, removePerson, fmtAsOf } from "./share.js";
+import { photoUrl, photoFallback, photoImg, isDirect } from "./photos.js";
 
 const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -32,16 +33,14 @@ const iconOf = (p) => catCfg(p.category).kindIcons?.[p.kind] || catCfg(p.categor
 // Short type label: "Church", "Synagogue"… for places of worship (data: `kind`), else the category's short name.
 const typeLabel = (p) => (p.kind && catCfg(p.category).kinds?.[p.kind]) || catCfg(p.category).short;
 const tierRank = { "must-see": 0, "worth-it": 1, bonus: 2, local: 3 };
-// Wikimedia serves thumbnails at standard widths only; other sizes are slow or refused. Snap up to the next one.
-const THUMB_W = [120, 250, 330, 500, 960, 1280];
-const plainFile = (f) => { try { return decodeURIComponent(f); } catch { return f; } }; // some names arrive URL-encoded
-const photoUrl = (file, w = 500) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(plainFile(file))}?width=${THUMB_W.find((x) => x >= w) || 1280}`;
 const filterActive = () => S.chip !== "all" || !!S.query;
 const dayCfg = (id) => CFG.trip.days.find((d) => d.id === id);
 
 async function getForecast() {
-  if (!FC) FC = await forecast(CFG.trip.days, CFG.map.home, { sample: MOCK });
-  return FC;
+  if (FC) return FC;
+  const fc = await forecast(CFG.trip.days, CFG.map.home, { sample: MOCK });
+  if (fc.status !== "error") FC = fc; // a failed download isn't kept: the next look tries again
+  return fc;
 }
 
 // ---------- filtering ----------
@@ -86,7 +85,7 @@ const THUMB = 330;
 function thumb(p, { pill = true, heart = true, badge = "" } = {}) {
   const ph = p.photos?.[0];
   return `<div class="thumb" style="--cat: var(${catVar(p.colkey || p.category)})">
-    ${ph ? `<img loading="lazy" alt="" src="${photoUrl(ph.file, THUMB)}" onerror="this.remove()">` : ""}
+    ${ph ? photoImg(ph.file, THUMB, 'loading="lazy" alt=""') : ""}
     ${icon(iconOf(p), 30)}
     ${pill && !badge ? `<span class="pill">${esc(typeLabel(p))}</span>` : ""}
     ${badge ? `<span class="badge-both">${esc(badge)}</span>` : ""}
@@ -215,6 +214,7 @@ function renderList(opts) {
   const city = MAP.map.getZoom() < 11.8;
   $("#list-title").textContent = S.near ? "Closest to you" : S.query ? `Results for “${S.query}”` : filterActive() ? `${(({ title, label }) => title || label)(CFG.chips.find((c) => c.id === S.chip))} in view` : "Top picks in view"; // zoomed out, the sheet bar says "zoom in to explore an area"
   const sub = (x) => `${esc(x.p.area)}${S.near ? ` · ${fmtDist(x.d)}` : ""}`;
+  $("#cards").removeAttribute("aria-busy");
   $("#cards").innerHTML = items.length
     ? items.slice(0, 12).map((x) => `<button class="card" data-open="${esc(x.p.id)}">${thumb(x.p)}<div class="card-name">${esc(x.p.name)}</div><div class="card-sub">${sub(x)}</div></button>`).join("")
     : `<p class="empty">Nothing here with these filters. Zoom out or clear the search.</p>`;
@@ -250,19 +250,19 @@ $("#sheet-bar").addEventListener("click", () => setSheet("peek"));
   const sheet = $("#sheet");
   const ZONES = "#sheet-handle, #sheet-bar, .sheet-head";
   const ORDER = ["closed", "peek", "open"];
-  let y0 = null, h0, moved, zone, last, eatClick = false;
+  let y0 = null, h0, moved, zone, last, eatClick = false, H;
   sheet.addEventListener("pointerdown", (e) => {
     zone = e.target.closest(ZONES);
     if (!zone || e.button > 0) return;
     y0 = e.clientY; h0 = sheet.offsetHeight; moved = false; last = [{ y: e.clientY, t: e.timeStamp }];
+    H = sheetHeights(); // measured once per drag, not on every finger move
   });
   window.addEventListener("pointermove", (e) => { // window: a fast first move can land outside the sheet
     if (y0 == null) return;
     const dy = y0 - e.clientY;
     if (!moved && Math.abs(dy) < 6) return; // still a tap
     if (!moved) { moved = true; sheet.classList.add("is-dragging"); try { zone.setPointerCapture(e.pointerId); } catch {} }
-    const h = sheetHeights();
-    sheet.style.setProperty("--sheet-h", `${Math.max(h.closed, Math.min(h.open, h0 + dy))}px`);
+    sheet.style.setProperty("--sheet-h", `${Math.max(H.closed, Math.min(H.open, h0 + dy))}px`);
     last.push({ y: e.clientY, t: e.timeStamp }); if (last.length > 5) last.shift();
   });
   const end = (e) => {
@@ -289,15 +289,24 @@ $("#sheet-bar").addEventListener("click", () => setSheet("peek"));
 // ---------- hearts + opening ----------
 function syncHearts(id) {
   const on = store.isHearted(id);
-  document.querySelectorAll(`[data-heart="${CSS.escape(id)}"]`).forEach((x) => { x.classList.toggle("is-on", on); x.setAttribute("aria-pressed", on); });
+  document.querySelectorAll(`[data-heart="${CSS.escape(id)}"]`).forEach((x) => { x.classList.toggle("is-pop", on && !x.classList.contains("is-on")); x.classList.toggle("is-on", on); x.setAttribute("aria-pressed", on); });
+}
+// After a heart or a day changes: hearts, the open card's day buttons and the Saved list all show the same thing.
+function afterPick(id) {
+  syncHearts(id);
+  if (S.selected === id && !$("#place").hidden && $("#days")) $("#days").innerHTML = dayButtons(id);
+  if ($("#screen-saved").classList.contains("is-active")) renderSaved();
 }
 document.addEventListener("click", (e) => {
   const h = e.target.closest("[data-heart]");
   if (h) {
     e.stopPropagation(); e.preventDefault();
-    store.toggleHeart(h.dataset.heart);
-    syncHearts(h.dataset.heart);
-    if ($("#screen-saved").classList.contains("is-active")) renderSaved();
+    const id = h.dataset.heart, snap = store.snapshot(), day = store.dayOf(id);
+    const onSaved = $("#screen-saved").classList.contains("is-active") && $("#place").hidden;
+    const on = store.toggleHeart(id);
+    afterPick(id);
+    // Un-saving also takes the place off its day (and, on Saved, out of the list in front of you): offer a way back.
+    if (!on && (day || onSaved)) toast(day ? `Removed from Saved and ${dayCfg(day).label}` : "Removed from Saved", () => { store.restore(snap); afterPick(id); });
     return;
   }
   const o = e.target.closest("[data-open]");
@@ -344,7 +353,7 @@ function openPlace(id) {
   const real = photos.filter(Boolean);
   el.innerHTML = `
     <div class="gallery">
-      <div class="gallery-track">${photos.map((ph, i) => `<div class="gallery-slide">${ph ? `<img alt="${i ? "" : esc(p.name)}" ${i > 1 ? 'loading="lazy"' : ""} draggable="false" data-zoom="${i}" src="${photoUrl(ph.file, 900)}" onerror="this.remove()">` : icon(iconOf(p), 64)}</div>`).join("")}</div>
+      <div class="gallery-track">${photos.map((ph, i) => `<div class="gallery-slide">${ph ? photoImg(ph.file, 900, `alt="${i ? "" : esc(p.name)}" ${i > 1 ? 'loading="lazy"' : ""} draggable="false" data-zoom="${i}"`) : icon(iconOf(p), 64)}</div>`).join("")}</div>
       <button class="icon-btn g-back" data-close aria-label="Back">${icon("back")}</button>
       <button class="icon-btn g-share" data-share-place aria-label="Share this place">${icon("share")}</button>
       <button class="icon-btn g-heart ${store.isHearted(id) ? "is-on" : ""}" data-heart="${esc(id)}" aria-label="Save" aria-pressed="${store.isHearted(id)}">${icon("heart")}</button>
@@ -383,7 +392,7 @@ function openViewer(photos, start) {
   v.className = "viewer";
   v.setAttribute("role", "dialog");
   v.setAttribute("aria-label", "Photos");
-  v.innerHTML = `<div class="viewer-track">${photos.map((ph) => `<div class="viewer-slide"><img draggable="false" alt="" src="${photoUrl(ph.file, 1280)}"></div>`).join("")}</div>
+  v.innerHTML = `<div class="viewer-track">${photos.map((ph, i) => `<div class="viewer-slide">${photoImg(ph.file, 1280, `draggable="false" alt=""${Math.abs(i - start) > 1 ? ' loading="lazy"' : ""}`)}</div>`).join("")}</div>
     <button class="icon-btn viewer-x" aria-label="Close photos">${icon("close")}</button>
     ${photos.length > 1 ? `<span class="viewer-count">${start + 1} / ${photos.length}</span>` : ""}`;
   $("#app").appendChild(v);
@@ -413,19 +422,15 @@ $("#place").addEventListener("click", (e) => {
   const b = e.target.closest("[data-day]");
   if (!b) return;
   const id = S.selected, day = b.dataset.day;
-  const prev = store.dayOf(id);
+  const prev = store.dayOf(id), snap = store.snapshot();
   const added = store.toggleDay(id, day);
-  syncHearts(id);
-  $("#days").innerHTML = dayButtons(id);
+  afterPick(id);
   $(`[data-day="${day}"]`, $("#days"))?.classList.add("pop");
   const r = store.activeRoute(day);
   const label = `${dayCfg(day).label}${store.routesOf(day).length > 1 && r ? ` · ${r.name}` : ""}`;
   const moved = added && prev && prev !== day;
-  toast(moved ? `Moved to ${label}` : added ? `Added to ${label}` : `Removed from ${dayCfg(day).label}`, () => {
-    store.toggleDay(id, day);
-    if (moved) store.toggleDay(id, prev);
-    $("#days").innerHTML = dayButtons(id);
-  });
+  // Undo puts everything back exactly as it was (adding to a day also saves the place; undo un-saves it again).
+  toast(moved ? `Moved to ${label}` : added ? `Added to ${label}` : `Removed from ${dayCfg(day).label}`, () => { store.restore(snap); afterPick(id); });
 });
 // Share one place: a link that opens the app on its card (plus the phone's share sheet when there is one).
 async function sharePlace(id) {
@@ -448,7 +453,7 @@ function closePlace() {
   placeT = setTimeout(() => { el.hidden = true; el.classList.remove("is-closing"); }, matchMedia("(prefers-reduced-motion: reduce)").matches ? 0 : 200);
   S.selected = null; MAP.select(null);
   history.replaceState(null, "", location.pathname + location.search);
-  renderList();
+  renderList({ auto: true });
   // Opened from What's here: back goes back to that panel, same spot, same pick (2026-11-08).
   if (HERE_BACK && S.here) { const b = HERE_BACK; HERE_BACK = null; showHere(b.c, { sel: b.sel }); } // re-frame: opening the place moved the map
   HERE_BACK = null;
@@ -490,7 +495,7 @@ function askName() {
     <button class="name-visitor" data-name="Visitor">Visitor</button>`, { dismissable: false });
   // "Visitor" (2026-11-06): someone outside the four, e.g. opening a shared link. Same app, saved as "Visitor".
   const done = (n) => { if (!n) return; store.setName(n); $("#dialog").hidden = true; toast(n === "Visitor" ? "Welcome! Tap hearts to save places." : `Hi ${n}! Tap hearts to save places.`); };
-  $("#dialog-card").addEventListener("click", (e) => { const b = e.target.closest("[data-name]"); if (b) done(b.dataset.name); });
+  $("#dialog-card").onclick = (e) => { const b = e.target.closest("[data-name]"); if (b) done(b.dataset.name); };
 }
 
 function showCredits() {
@@ -502,7 +507,7 @@ function showCredits() {
     Map data © <b>OpenStreetMap</b> contributors (ODbL), basemap © <b>CARTO</b>. Street and satellite maps © <b>Esri</b>, Maxar, Earthstar Geographics, HERE, Garmin; elevation for the hill shading from <b>Mapzen</b> terrain tiles (AWS Open Data). Weather by <b>Open-Meteo</b> (CC BY 4.0).</p>
     <button class="btn-secondary" data-close-dialog>Close</button>
     <ul class="credits">${rows.map((r) => `<li><b>${esc(r.place)}</b>: “${esc(r.file)}” by ${esc(r.author || "unknown")}, ${esc(r.licence || "see Commons")}</li>`).join("")}</ul>`);
-  $("#dialog-card").addEventListener("click", (e) => { if (e.target.closest("[data-close-dialog]")) $("#dialog").hidden = true; });
+  $("#dialog-card").onclick = (e) => { if (e.target.closest("[data-close-dialog]")) $("#dialog").hidden = true; };
 }
 $("#open-credits").addEventListener("click", showCredits);
 
@@ -520,7 +525,7 @@ function dayPlan(day) {
 async function showSplash(after) {
   const el = $("#splash");
   renderSplash(el, { cfg: CFG, theme: THEME, fc: FC, people: CFG.trip.people, onGo: after, dayPlan });
-  if (!FC) { await getForecast(); if (!el.hidden && !el.classList.contains("is-leaving")) updateSplashForecast(el, { cfg: CFG, fc: FC }); }
+  if (!FC) { const fc = await getForecast(); if (!el.hidden && !el.classList.contains("is-leaving")) updateSplashForecast(el, { cfg: CFG, fc }); }
 }
 $("#open-splash").addEventListener("click", () => showSplash());
 // Edit mode's date slider: show the splash for the previewed day (and refresh the More card).
@@ -549,6 +554,8 @@ async function renderThemePicker() {
 }
 
 // ---------- Offline ----------
+// "2": the offline copy made before 2026-11-10 used other photo addresses and was dropped with the old cache.
+const OFFLINE_KEY = "oit:offline2";
 const swReady = () => ("serviceWorker" in navigator) && (location.protocol === "https:" || location.hostname === "localhost");
 function renderOffline(state = {}) {
   const box = $("#offline-box");
@@ -558,7 +565,7 @@ function renderOffline(state = {}) {
       <p class="hint left">Saving… ${state.done} of ${state.total}. Keep the app open.</p>`;
     return;
   }
-  let saved = null; try { saved = localStorage.getItem("oit:offline"); } catch { /* ignore */ }
+  let saved = null; try { saved = localStorage.getItem(OFFLINE_KEY); } catch { /* ignore */ }
   box.innerHTML = `<button class="btn-secondary" id="offline-btn">${icon("download", 20)} ${saved ? "Update offline copy" : "Save for offline"}</button>
     <p class="hint left">${saved ? `Saved ${esc(saved)}. The map, photos and plan work without signal.` : "Saves the map of the whole area, every place and the main photos (about 60 MB). Best on Wi-Fi."}</p>`;
   $("#offline-btn").onclick = saveOffline;
@@ -575,14 +582,15 @@ async function saveOffline() {
   const t2 = (lon, lat, z) => [Math.floor((lon + 180) / 360 * 2 ** z), Math.floor((1 - Math.log(Math.tan(lat * Math.PI / 180) + 1 / Math.cos(lat * Math.PI / 180)) / Math.PI) / 2 * 2 ** z)];
   if (tiles.length) for (let z = 10; z <= 14; z++) {
     const [x0, y0] = t2(w, n, z), [x1, y1] = t2(e, s, z);
-    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) urls.push(tiles[(x + y) % tiles.length].replace("{z}", z).replace("{x}", x).replace("{y}", y));
+    for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) urls.push({ u: tiles[(x + y) % tiles.length].replace("{z}", z).replace("{x}", x).replace("{y}", y) });
   }
   // Photos: the card thumbnail of every place, and the first big gallery photo of every must-see / worth-it place.
+  const photo = (file, w) => urls.push(isDirect(file) ? { u: photoUrl(file, w), fb: photoFallback(file, w) } : { u: photoUrl(file, w), opaque: true });
   for (const f of PLACES.features) {
     const p = f.properties;
     if (!p.photos?.[0]) continue;
-    urls.push(photoUrl(p.photos[0].file, THUMB));
-    if (p.tier !== "bonus") urls.push(photoUrl(p.photos[0].file, 900));
+    photo(p.photos[0].file, THUMB);
+    if (p.tier !== "bonus") photo(p.photos[0].file, 900);
   }
   const total = urls.length;
   let done = 0, failed = 0;
@@ -590,17 +598,20 @@ async function saveOffline() {
   const queue = [...urls];
   const worker = async () => {
     while (queue.length) {
-      const u = queue.shift();
-      // Tiles are fetched by MapLibre with CORS; photos by <img> tags (no-cors), so cache each the way it's used.
-      const tile = /cartocdn/.test(u);
-      try { const r = await fetch(u, { mode: tile ? "cors" : "no-cors" }); if (tile && !r.ok) failed++; } catch { failed++; }
+      const x = queue.shift();
+      // Each file is fetched the way the app will ask for it later (the service worker keeps the answer):
+      // tiles and direct photos with CORS, so a failed download is seen and not kept; the few FilePath photos without.
+      try {
+        const r = await fetch(x.u, { mode: x.opaque ? "no-cors" : "cors" });
+        if (!x.opaque && !r.ok) { if (x.fb) await fetch(x.fb, { mode: "no-cors" }); else failed++; }
+      } catch { failed++; }
       done++;
       if (done % 20 === 0 || done === total) renderOffline({ running: true, done, total });
     }
   };
   await Promise.all(Array.from({ length: 4 }, worker));
   const when = new Date().toLocaleDateString("en-GB", { day: "numeric", month: "short" });
-  try { localStorage.setItem("oit:offline", when); } catch { /* ignore */ }
+  try { localStorage.setItem(OFFLINE_KEY, when); } catch { /* ignore */ }
   renderOffline();
   toast(failed > total * 0.1 ? `Saved, but ${failed} items failed. Try again on Wi-Fi.` : "Saved for offline");
 }
@@ -690,7 +701,10 @@ $("#btn-near").addEventListener("click", () => {
   if (S.near) { S.near = null; b.classList.remove("is-on"); MAP.setMe(null); renderList(); return; }
   if (!navigator.geolocation) return toast("Location isn't available on this device");
   navigator.geolocation.getCurrentPosition((pos) => {
-    S.near = [pos.coords.longitude, pos.coords.latitude];
+    const me = [pos.coords.longitude, pos.coords.latitude];
+    // Far from Istanbul (before the trip): the map used to fly off to an empty grey map at home.
+    if (distM(me, CFG.map.home) > 80000) return toast("You're not in Istanbul yet. This will show where you are once you're there.");
+    S.near = me;
     b.classList.add("is-on"); MAP.setMe(S.near);
     MAP.map.flyTo({ center: S.near, zoom: Math.max(MAP.map.getZoom(), 14.5), duration: 800 });
   }, () => toast("Couldn't get your location. Check location permission."), { enableHighAccuracy: true, timeout: 10000 });
@@ -733,7 +747,6 @@ function vibeTap(e) {
   if (MAP.map.queryRenderedFeatures(e.point).some((f) => ["places", "fixed"].includes(f.source))) return;
   const a = areaAt([e.lngLat.lng, e.lngLat.lat]);
   if (!a) return;
-  const cls = vibeCls(a.primary);
   toast(`${vibeWords(a.primary, a.secondary, a.lifestyle)}. ${vibeFeel(a.primary, a.lifestyle)}`);
 }
 function setVibe(mode) {
@@ -935,7 +948,8 @@ function renderSaved() {
   }
   $("#saved-top").innerHTML = top;
   $("#saved-list").innerHTML = ids.length ? ids.map((id) => card(id, badgeFor(id))).join("")
-    : `<p class="empty">${S.savedTab === "mine" ? "Tap the heart on any place to save it here." : "Nothing in this list."}</p>`;
+    : S.savedTab === "mine" ? `<div class="empty-state"><span class="es-ico">${icon("heart", 26)}</span><b>Nothing saved yet</b><p>Tap the heart on any place and it will wait for you here.</p><button class="btn-pill" data-go-explore>${icon("compass", 18)} Explore the map</button></div>`
+    : `<p class="empty">Nothing in this list.</p>`;
   $("#share-btn")?.addEventListener("click", async () => {
     if (!me.hearts.length) return toast("Save a few places first");
     const r = await shareMyPicks();
@@ -945,6 +959,7 @@ function renderSaved() {
 $("#screen-saved").addEventListener("click", (e) => {
   const t = e.target.closest("[data-saved-tab]");
   if (t) { S.savedTab = t.dataset.savedTab; return renderSaved(); }
+  if (e.target.closest("[data-go-explore]")) return showScreen("explore");
   const mg = e.target.closest("[data-merge]");
   if (mg) { const n = mergeIntoMine(mg.dataset.merge); toast(n ? `Added ${n} places to your picks` : "You already have all of these"); return renderSaved(); }
   const rm = e.target.closest("[data-remove-person]");
@@ -1160,16 +1175,16 @@ function renderPlanned() {
 }
 store.on(() => { if (MAP) { renderMapRoutes(); renderPlanned(); } });
 
-// Loading veil over the map until the first tiles and pins have drawn (or 8 s, whichever comes first).
+// Loading veil over the map until the first tiles and pins have drawn (or 2.5 s, whichever comes first).
 function mapLoading(on) {
   const el = $("#map-loading");
   if (on) { el.hidden = false; el.classList.remove("is-done"); return; }
   el.classList.add("is-done");
   setTimeout(() => { if (el.classList.contains("is-done")) el.hidden = true; }, 350);
 }
-async function buildMap(camera) {
+async function buildMap(camera, data = DATA) {
   mapLoading(true);
-  MAP = await createMap({ container: "map", theme: THEME, config: CFG, data: DATA, onPlace: (id) => { if (!S.here) openPlace(id); },
+  MAP = await createMap({ container: "map", theme: THEME, config: CFG, data, onPlace: (id) => { if (!S.here) openPlace(id); },
     onStop: (st) => { if (!S.here) toast(`${st.name} · ${{ metro: "Metro station", tram: "Tram stop", funicular: "Funicular", ferry: "Ferry pier", rail: "Train station" }[st.mode] || "Stop"}${st.lines ? ` (${[].concat(st.lines).join(", ")})` : ""}`); } });
   if (new URLSearchParams(location.search).has("debug")) window.OIT = { MAP, S };
   if (camera) MAP.map.jumpTo(camera);
@@ -1187,7 +1202,7 @@ async function buildMap(camera) {
   renderMapRoutes();
   renderPlanned();
   const done = () => { clearTimeout(t); mapLoading(false); };
-  const t = setTimeout(done, 8000);
+  const t = setTimeout(done, 2500); // our pins are on the map by now; the last basemap tiles can arrive in view
   MAP.map.once("idle", done);
 }
 // Freeze recovery (2026-11-08): when an iPhone runs short of graphics memory (satellite tiles, fast zooming) it takes
@@ -1229,22 +1244,7 @@ async function switchTheme() {
 }
 
 // ---------- boot ----------
-(async function boot() {
-  hydrateIcons();
-  THEME = await loadTheme();
-  const get = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
-  CFG = await get("config.json");
-  // Splash once per app open (not when arriving from a shared link or a place link), shown before anything else.
-  const linkHash = /(^#|&)(from|z|place)=/.test(location.hash);
-  // Every open, refreshes included (2026-11-06, Cem); not for shared or place links, or ?splash=0.
-  const withSplash = !linkHash && params.get("splash") !== "0";
-  let splashGone = !withSplash, mapReady = false;
-  const afterSplash = () => { splashGone = true; if (mapReady && !store.get().name) askName(); };
-  if (withSplash) showSplash(afterSplash);
-  document.documentElement.classList.remove("booting");
-  let editMod = null;
-  if (params.get("edit") === "1") editMod = await import("./edit.js");
-  MOCK = params.get("mockweather") === "1" || (editMod ? editMod.mockWeatherOn() : (() => { try { return localStorage.getItem("oit:mockweather") === "1"; } catch { return false; } })());
+async function loadData(get) {
   const L = Object.fromEntries(CFG.layers.map((l) => [l.id, l.file]));
   const [places, mask, ferries, stops, fixed, areas] = await Promise.all([L.places, L.mask, L.ferries, L.stops, L.fixed, CFG.vibe.file].map(get));
   const labelCats = new Set(CFG.categories.filter((c) => c.asLabel).map((c) => c.id));
@@ -1263,7 +1263,28 @@ async function switchTheme() {
   renderBadge();
   renderChips();
   DATA = { places, mask, ferries, stops, fixed, areas };
-  await buildMap();
+  return DATA;
+}
+
+(async function boot() {
+  hydrateIcons();
+  const get = (u) => fetch(u).then((r) => { if (!r.ok) throw new Error(u); return r.json(); });
+  // Start-up (2026-11-10): theme and config load side by side, the data starts downloading straight after
+  // (index.html preloads the big places file), and the map is set up while it arrives.
+  [THEME, CFG] = await Promise.all([loadTheme(), get("config.json")]);
+  const dataP = loadData(get);
+  // Splash once per app open (not when arriving from a shared link or a place link), shown before anything else.
+  const linkHash = /(^#|&)(from|z|place)=/.test(location.hash);
+  // Every open, refreshes included (2026-11-06, Cem); not for shared or place links, or ?splash=0.
+  const withSplash = !linkHash && params.get("splash") !== "0";
+  let splashGone = !withSplash, mapReady = false;
+  const afterSplash = () => { splashGone = true; if (mapReady && !store.get().name) askName(); };
+  if (withSplash) showSplash(afterSplash);
+  document.documentElement.classList.remove("booting");
+  let editMod = null;
+  if (params.get("edit") === "1") editMod = await import("./edit.js");
+  MOCK = params.get("mockweather") === "1" || (editMod ? editMod.mockWeatherOn() : (() => { try { return localStorage.getItem("oit:mockweather") === "1"; } catch { return false; } })());
+  await buildMap(null, dataP);
   setSheet("peek");
 
   const imp = importFromHash();

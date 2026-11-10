@@ -740,3 +740,123 @@ body { font-feature-settings: "ss01" 0; text-rendering: optimizeLegibility; }
 .place-actions .gmaps { margin-top: 0; }
 .show-map { cursor: pointer; }
 .show-map .ico { color: var(--c-primary); }
+
+/* ---------- Polish pass (2026-11-10) ----------
+   One layer over the rounds above: softer two-step shadows, press feedback on everything tappable, photos that fade in,
+   bigger photo cards that fill the sheet, inset list dividers, a pill behind the active tab, calmer section labels.
+   Still tokens only. */
+:root {
+  /* Shadows are cast in navy, not ink: ink is light in the dark theme, where it drew a pale glow round every button. */
+  --shadow: 0 1px 2px color-mix(in srgb, var(--c-navy) 6%, transparent), 0 10px 28px color-mix(in srgb, var(--c-navy) calc(var(--shadow-a) * 100%), transparent);
+  --shadow-sm: 0 1px 2px color-mix(in srgb, var(--c-navy) 7%, transparent), 0 3px 10px color-mix(in srgb, var(--c-navy) calc(var(--shadow-a) * 60%), transparent);
+  --hairline: 0 0 0 1px color-mix(in srgb, var(--c-line) 60%, transparent);
+  --radius-lg: calc(var(--radius) + 8px);
+}
+
+/* App-like: no scrollbars on the inner scrollers */
+.page, .place, .sheet-body, .dialog-card, .suggest { scrollbar-width: none; }
+.page::-webkit-scrollbar, .place::-webkit-scrollbar, .sheet-body::-webkit-scrollbar, .dialog-card::-webkit-scrollbar, .suggest::-webkit-scrollbar { display: none; }
+
+/* Saved and More: titles clear of the status bar in the installed app (Routes already was) */
+.page:not(.routes-page) { padding-top: calc(20px + env(safe-area-inset-top)); }
+.page-title { font-size: 30px; letter-spacing: -0.025em; margin: 6px 0 18px; }
+.screen.is-active > .page { animation: page-in .22s var(--ease); }
+@keyframes page-in { from { opacity: 0; transform: translateY(6px); } }
+
+/* Press feedback: everything tappable gives a little under the finger */
+.chip, .fab, .btn-primary, .btn-secondary, .btn-pill, .day-btn, .gmaps, .tray-chip, .route-chip, .rh-map, .sg-chip, .icon-btn, .heart,
+.name-opts button, .menu-item, .dseg, .sp-go, .vp-chips button {
+  transition: transform .14s var(--ease), background .15s, color .15s, border-color .15s, box-shadow .15s, opacity .15s; }
+.chip:active, .fab:active, .btn-primary:active, .btn-secondary:active, .btn-pill:active, .day-btn:active, .gmaps:active, .tray-chip:active,
+.route-chip:active, .rh-map:active, .sg-chip:active, .icon-btn:active, .heart:active, .name-opts button:active, .vp-chips button:active { transform: scale(.95); }
+.menu-item:active { opacity: .6; }
+.card .thumb, .row .thumb { transition: transform .2s var(--ease); }
+.card:active .thumb { transform: scale(.97); }
+.row:active .thumb { transform: scale(.94); }
+.is-pop .ico { animation: heart-pop .32s var(--ease); }
+@keyframes heart-pop { 40% { transform: scale(1.28); } }
+
+/* Photos fade in over their coloured placeholder instead of popping */
+/* (only images that photos.js marks with .ph: a page running an older script still shows its photos) */
+img.ph { opacity: 0; transition: opacity .35s ease; }
+img.ph.is-in { opacity: 1; }
+
+/* Search, chips, map buttons: one shadow recipe */
+.search { box-shadow: var(--shadow-sm), var(--hairline); transition: box-shadow .2s var(--ease); }
+.search:focus-within { box-shadow: var(--shadow), 0 0 0 2px var(--c-primary); }
+.chip { box-shadow: var(--shadow-sm), var(--hairline); }
+.chip .count { opacity: 1; padding: 1px 7px; border-radius: 999px; background: color-mix(in srgb, currentColor 18%, transparent); font-variant-numeric: tabular-nums; }
+.fab, .vibe-btn { box-shadow: var(--shadow-sm), var(--hairline); }
+
+/* Bottom sheet: rounder, lighter handle; in the half-open state the photo cards fill the height they have */
+.sheet, .vibe-panel { border-radius: var(--radius-lg) var(--radius-lg) 0 0; box-shadow: 0 -1px 0 color-mix(in srgb, var(--c-line) 50%, transparent), 0 -10px 30px color-mix(in srgb, var(--c-navy) calc(var(--shadow-a) * 60%), transparent); }
+.sheet-handle { height: 24px; }
+.sheet-handle span { width: 36px; height: 4px; background: color-mix(in srgb, var(--c-ink-2) 28%, var(--c-line)); }
+.sheet-head { align-items: center; margin: 8px 0 12px; }
+.sheet-head h2 { font-size: 19px; letter-spacing: -0.02em; }
+.thumb { border-radius: var(--radius); }
+.row .thumb, .nearby .thumb, .stop-row .thumb { border-radius: 12px; }
+.cards .card { width: 200px; }
+.sheet[data-state="peek"] .sheet-body { display: flex; flex-direction: column; overflow: hidden; padding-bottom: 14px; }
+.sheet[data-state="peek"] .cards { flex: 1; min-height: 0; align-items: stretch; }
+.sheet[data-state="peek"] .cards .thumb { flex: 1 1 auto; height: auto; min-height: 64px; max-height: 190px; }
+.sheet[data-state="peek"] .cards .card-name { display: block; flex: none; white-space: nowrap; text-overflow: ellipsis; }
+.sheet[data-state="peek"] .cards .card-sub { flex: none; }
+.pill { background: color-mix(in srgb, var(--c-surface) 94%, transparent); box-shadow: 0 1px 3px color-mix(in srgb, var(--c-navy) 14%, transparent); }
+.heart { width: 32px; height: 32px; background: color-mix(in srgb, var(--c-surface) 94%, transparent); }
+/* Placeholders while the places load */
+.card.sk { pointer-events: none; }
+.card.sk .thumb { background: var(--c-surface-2); animation: sk 1s ease-in-out infinite alternate; }
+.card.sk i { display: block; flex: none; height: 12px; width: 70%; margin-top: 11px; border-radius: 6px; background: var(--c-surface-2); }
+.card.sk i:last-child { width: 38%; margin-top: 8px; }
+@keyframes sk { to { opacity: .5; } }
+
+/* Full list: the divider starts after the photo */
+.list .row { border-bottom: 0; padding: 0; min-height: 0; align-items: stretch; }
+.list .row .thumb { margin: 9px 0; }
+.list .row .row-txt { display: flex; flex-direction: column; justify-content: center; padding: 12px 0; border-bottom: 1px solid var(--c-line); }
+.list .row:last-child .row-txt { border-bottom: 0; }
+
+/* Tab bar: a soft pill behind the active icon */
+.tabbar { border-top: 0; box-shadow: 0 -1px 0 color-mix(in srgb, var(--c-line) 80%, transparent); }
+.tab { gap: 2px; font-size: 11.5px; transition: color .15s; }
+.tab > span:first-child { display: grid; place-items: center; width: 56px; height: 30px; border-radius: 999px; transition: background .2s var(--ease), transform .14s var(--ease); }
+.tab.is-active > span:first-child { background: color-mix(in srgb, var(--c-accent) 12%, transparent); }
+.tab.is-active { font-weight: 700; }
+.tab:active > span:first-child { transform: scale(.9); }
+
+/* Toast: floats in from below; Undo is a clear gold action, not an underlined link */
+.toast { border-radius: var(--radius); padding: 13px 14px 13px 16px; bottom: calc(var(--tabbar-h) + 14px); line-height: 1.35; animation: toast-in .28s var(--ease); }
+@keyframes toast-in { from { transform: translateY(14px) scale(.98); opacity: 0; } }
+.toast button { flex: none; text-decoration: none; color: var(--c-sun); padding: 0 6px; }
+
+/* Dialogs */
+.dialog:not(.is-sheet) { animation: fade .2s ease; }
+.dialog-card { border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+.name-opts button { background: var(--c-surface-2); border-color: transparent; }
+
+/* Place card: a shade behind the top buttons so they read on any photo, a rounder body, calmer section labels */
+.gallery { height: calc(320px + env(safe-area-inset-top)); }
+.gallery::before { content: ""; position: absolute; z-index: 1; inset: 0 0 auto 0; height: calc(96px + env(safe-area-inset-top)); pointer-events: none;
+  background: linear-gradient(to bottom, color-mix(in srgb, var(--c-navy) 40%, transparent), transparent); }
+.gallery .icon-btn { z-index: 2; }
+.g-count { z-index: 2; bottom: 34px; font-variant-numeric: tabular-nums; }
+.place-body { margin-top: -22px; border-radius: var(--radius-lg) var(--radius-lg) 0 0; padding-top: 22px; }
+.place h1 { font-size: 30px; letter-spacing: -0.025em; }
+.name-tr { margin-top: 3px; }
+.place-actions { margin-top: 14px; }
+.gmaps { height: 42px; border: 0; box-shadow: var(--shadow-sm), var(--hairline); }
+.blurb { font-size: 16px; line-height: 1.55; margin-top: 16px; }
+.section-title, .tray h2 { font-size: 13px; font-weight: 600; color: var(--c-ink-2); margin: 26px 0 10px; }
+.day-btn { height: 50px; border: 0; border-radius: var(--radius); background: var(--c-surface-2); }
+.nearby .thumb { height: 84px; }
+.here-list .row .thumb { border-radius: 10px; }
+.dialog-card .section-title { margin-top: 16px; }
+
+/* Saved */
+.saved-grid { gap: 18px 12px; }
+.saved-grid .thumb { height: 128px; }
+.empty-state { grid-column: 1 / -1; display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 48px 24px 24px; }
+.es-ico { width: 60px; height: 60px; margin-bottom: 8px; border-radius: 50%; display: grid; place-items: center; color: var(--c-accent); background: color-mix(in srgb, var(--c-accent) 10%, var(--c-surface)); }
+.empty-state b { font-size: 17px; font-weight: 700; }
+.empty-state p { margin: 0 0 14px; max-width: 28ch; font-size: 14.5px; line-height: 1.45; color: var(--c-ink-2); }

@@ -23,7 +23,8 @@ for f in APP.rglob("*"):
                 continue
             problems.append(f"{f.relative_to(APP)}:{n}: colour {m.group()}")
         for font in fonts:
-            if font in line:
+            # index.html asks for the default font up front (one line, id="theme-fonts"), so text doesn't wait for theme.js
+            if font in line and 'id="theme-fonts"' not in line:
                 problems.append(f"{f.relative_to(APP)}:{n}: font name '{font}'")
 print("\n".join(problems) or "theme QA: OK (no hard-coded colours or font names outside theme files)")
 sys.exit(1 if problems else 0)

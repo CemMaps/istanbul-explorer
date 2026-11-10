@@ -24,6 +24,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://basemaps.cartocdn.com" crossorigin>
+  <link rel="preconnect" href="https://upload.wikimedia.org" crossorigin>
+  <!-- Start-up (2026-11-10): the big data file and the config start downloading with the page, not after the scripts;
+       the default font is requested here too (theme.js swaps the address only if a theme uses another font). -->
+  <link rel="preload" href="config.json" as="fetch" crossorigin>
+  <link rel="preload" href="theme.json" as="fetch" crossorigin>
+  <link rel="preload" href="../data/places.geojson" as="fetch" crossorigin>
+  <link rel="stylesheet" id="theme-fonts" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..800&display=swap">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
   <style>html.booting body > * { visibility: hidden; }</style>
   <script>
@@ -59,9 +67,10 @@
     })();
   </script>
   <link rel="stylesheet" href="styles.css">
-  <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
-  <script src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
-  <script src="https://unpkg.com/lz-string@1.5.0/libs/lz-string.min.js"></script>
+  <!-- defer: the page is not held up while these download; they still run in order, before app.js -->
+  <script defer src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+  <script defer src="https://unpkg.com/suncalc@1.9.0/suncalc.js"></script>
+  <script defer src="https://unpkg.com/lz-string@1.5.0/libs/lz-string.min.js"></script>
 </head>
 <body>
   <div id="app" class="app">
@@ -116,7 +125,7 @@
             <h2 class="list-title-wrap"><span id="list-title">Top picks in view</span><span id="list-busy" class="ml-spin list-busy" role="status" aria-label="Updating" hidden></span></h2>
             <button id="sheet-toggle" class="link-btn">See all</button>
           </div>
-          <div id="cards" class="cards"></div>
+          <div id="cards" class="cards" aria-busy="true"><div class="card sk"><div class="thumb"></div><i></i><i></i></div><div class="card sk"><div class="thumb"></div><i></i><i></i></div><div class="card sk"><div class="thumb"></div><i></i><i></i></div></div>
           <div id="list" class="list"></div>
         </div>
       </section>

@@ -68,9 +68,13 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     pixelRatio: Math.min(window.devicePixelRatio || 1, 2), refreshExpiredTiles: false,
     maxTileCacheSize: 80, maxTileCacheZoomLevels: 3, // fewer tiles (GPU textures) kept around: satellite tiles add up fast
     fadeDuration: 120, // short fade so collisions don't pop while zooming (selected pin ignores placement, so no blink)
+    // 2026-11-10: the map stays around Istanbul (it could be dragged anywhere, onto empty grey map).
+    maxBounds: config.map.maxBounds,
   });
   map.keyboard.disableRotation?.();
-  await new Promise((r) => map.on("load", r));
+  // 2026-11-10: wait for the style only (not "load", which also waits for every basemap tile to arrive), and for
+  // the data, which downloads at the same time. Our layers go on a second or more sooner on a phone connection.
+  [, data] = await Promise.all([new Promise((r) => map.once("style.load", r)), data]);
   const baseLayerIds = map.getStyle().layers.map((l) => l.id); // the vector basemap, hidden under a raster basemap
 
   // Recolour the basemap from theme tokens (only for the light basemaps).
@@ -85,24 +89,29 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
   // Pin images per category: outlined (normal) and filled (selected).
   const bg = cssVar("--c-surface");
   const pinFilled = theme.pinStyle === "filled";
+  // All pin and stop images are drawn at the same time (2026-11-10: they were made one after another).
+  const images = [];
+  const addImg = (name, promise, pixelRatio) => images.push(promise.then((img) => map.addImage(name, img, { pixelRatio })));
   for (const c of config.categories) {
     const col = cssVar(catVar(c.id));
-    map.addImage(`pin-${slug(c.id)}`, await pinImage(c.icon, col, bg, { filled: pinFilled }), { pixelRatio: 2 });
-    map.addImage(`pin-${slug(c.id)}-sel`, await pinImage(c.icon, col, bg, { filled: !pinFilled }), { pixelRatio: 2 });
+    addImg(`pin-${slug(c.id)}`, pinImage(c.icon, col, bg, { filled: pinFilled }), 2);
+    addImg(`pin-${slug(c.id)}-sel`, pinImage(c.icon, col, bg, { filled: !pinFilled }), 2);
     // Food ("local" tier) icons are drawn at their real size with thicker lines: scaling the big pin down blurred them.
-    map.addImage(`pin-${slug(c.id)}-sm`, await pinImage(c.icon, col, bg, { filled: pinFilled, px: SMALL_PX, ratio: 3, ringW: 3.4, strokeW: 3.2 }), { pixelRatio: 3 });
+    addImg(`pin-${slug(c.id)}-sm`, pinImage(c.icon, col, bg, { filled: pinFilled, px: SMALL_PX, ratio: 3, ringW: 3.4, strokeW: 3.2 }), 3);
     // Kinds with their own icon (churches, synagogues): same colour, own glyph; places get catslug "<cat>-<kind>".
     for (const [kind, ic] of Object.entries(c.kindIcons || {})) {
       const col = c.kindColors?.[kind] ? cssVar(catVar(c.kindColors[kind])) : cssVar(catVar(c.id)); // churches: own colour
-      map.addImage(`pin-${slug(c.id)}-${kind}`, await pinImage(ic, col, bg, { filled: pinFilled }), { pixelRatio: 2 });
-      map.addImage(`pin-${slug(c.id)}-${kind}-sel`, await pinImage(ic, col, bg, { filled: !pinFilled }), { pixelRatio: 2 });
+      addImg(`pin-${slug(c.id)}-${kind}`, pinImage(ic, col, bg, { filled: pinFilled }), 2);
+      addImg(`pin-${slug(c.id)}-${kind}-sel`, pinImage(ic, col, bg, { filled: !pinFilled }), 2);
     }
   }
   const navy = cssVar("--c-navy");
   // On the dark basemap the navy home pin disappears: white icon + light outline there.
   const dark = theme.basemap === "dark";
-  map.addImage("pin-home", await pinImage("home", navy, bg, dark ? { filled: true, inkColor: cssVar("--c-ink-inverse"), ring: cssVar("--c-ink-inverse") } : { filled: true }), { pixelRatio: 2 });
-  map.addImage("pin-airport", await pinImage("plane", navy, bg, { filled: true }), { pixelRatio: 2 });
+  addImg("pin-home", pinImage("home", navy, bg, dark ? { filled: true, inkColor: cssVar("--c-ink-inverse"), ring: cssVar("--c-ink-inverse") } : { filled: true }), 2);
+  addImg("pin-airport", pinImage("plane", navy, bg, { filled: true }), 2);
+  for (const m of ["metro", "tram", "funicular", "ferry", "rail"]) addImg(`stop-${m}`, stopImage(m, cssVar(`--transit-${m}`) || cssVar("--c-ink-2")), 3);
+  await Promise.all(images);
 
   // Outside the study area (2026-11-08): a static, feathered milky tint drawn by the map itself.
   // data/study_mask.geojson (scripts/11_mask_feather.py) holds a clear strip just outside the line, rings that get
@@ -117,7 +126,7 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
     paint: { "line-color": cssVar("--c-ink-2"), "line-width": 1, "line-opacity": 0.18 } });
 
   // Vibe map: soft translucent fill under everything, off by default (character or lifestyle colouring).
-  map.addSource("areas", { type: "geojson", data: data.areas || { type: "FeatureCollection", features: [] } });
+  map.addSource("areas", { type: "geojson", maxzoom: 13, data: data.areas || { type: "FeatureCollection", features: [] } });
   const vibeColor = ["match", ["get", "primary"], ...config.vibe.classes.flatMap((c) => [c.id, cssVar(`--vibe-${c.id}`)]), cssVar("--c-ink-2")];
   const lifeColor = ["match", ["get", "lifestyle"], ...config.vibe.lifestyles.flatMap((l) => [l.id, cssVar(`--life-${l.id}`)]), cssVar("--c-ink-2")];
   map.addLayer({ id: "vibe-fill", type: "fill", source: "areas", layout: { visibility: "none" },
@@ -136,7 +145,6 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
   map.addSource("stops", { type: "geojson", data: data.stops });
   const modeColor = ["match", ["get", "mode"], ...["metro", "tram", "funicular", "ferry", "rail"].flatMap((m) => [m, cssVar(`--transit-${m}`)]), cssVar("--c-ink-2")];
   // Stations and piers: a small badge with the mode letter (or a boat), never a plain dot that looks like a place.
-  for (const m of ["metro", "tram", "funicular", "ferry", "rail"]) map.addImage(`stop-${m}`, await stopImage(m, cssVar(`--transit-${m}`) || cssVar("--c-ink-2")), { pixelRatio: 3 });
   map.addLayer({ id: "stops", type: "symbol", source: "stops", minzoom: 14.5,
     layout: { "icon-image": ["concat", "stop-", ["coalesce", ["get", "mode"], "rail"]], "icon-size": ["interpolate", ["linear"], ["zoom"], 14.5, 0.8, 17, 1],
               "icon-allow-overlap": true, "icon-ignore-placement": true,
@@ -150,7 +158,12 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
   });
 
   // Places
-  map.addSource("places", { type: "geojson", data: data.places, promoteId: "id" });
+  // The map gets a slim copy of the places (2026-11-10): only what the layers draw with. The full file (2.8 MB with
+  // descriptions, photo credits, sources) used to be copied to the map's worker at start-up and again on every
+  // filter or search; the slim copy is about a tenth of that. maxzoom 14: closer views reuse the z14 tiles.
+  const slim = (fc) => ({ type: "FeatureCollection", features: fc.features.map((f) => { const p = f.properties;
+    return { type: "Feature", geometry: f.geometry, properties: { id: p.id, name: p.name, tier: p.tier, score: p.score, catslug: p.catslug, colkey: p.colkey, asLabel: p.asLabel, dim: p.dim } }; }) });
+  map.addSource("places", { type: "geojson", data: slim(data.places), promoteId: "id", maxzoom: 14 });
   const dimOp = ["case", ["get", "dim"], config.dimOpacity, 1];
   const tiers = Object.entries(config.tiers).reverse(); // draw bonus first, must-see on top
   const placeLayers = [];
@@ -334,7 +347,7 @@ export async function createMap({ container, theme, config, data, onPlace, onSto
       }
       map.getSource("here").setData({ type: "FeatureCollection", features: feats });
     },
-    setPlaces: (fc) => map.getSource("places").setData(fc),
+    setPlaces: (fc) => map.getSource("places").setData(slim(fc)),
     setPlanned: (fc) => map.getSource("planned").setData(fc),
     // Selecting shows the filled pin at once; deselecting fades it out (no flash when a card closes).
     select(id) {

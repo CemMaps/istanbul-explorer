@@ -1,6 +1,7 @@
 // Splash: countdown that gets more excited as the trip approaches, plus the trip-days forecast.
 import { icon } from "./icons.js";
 import { tripStatus, sunTimes, fmtTime } from "./sky.js";
+import { photoUrl } from "./photos.js";
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -33,7 +34,7 @@ export function mood(cfg) {
 // Countdown card for the More tab: the big number, the countdown line, sunset photo behind.
 export function countdownCard(cfg) {
   const m = mood(cfg);
-  const photo = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(SPLASH_PHOTO)}?width=960`;
+  const photo = photoUrl(SPLASH_PHOTO, 960);
   return `<span class="cc-photo" style="background-image:url('${photo}')"></span>
     <span class="cc-body" data-level="${m.level}">${m.plane ? `<span class="cc-plane" aria-hidden="true">${icon("plane2", 26)}</span>` : ""}<span class="cc-big${/^\d+$/.test(m.big) ? "" : " is-word"}">${esc(m.big)}</span>${m.unit ? `<span class="cc-unit">${esc(m.unit)}</span>` : ""}
       ${countLine(cfg, m)}<span class="cc-more">Days, plans and forecast ${icon("chevronRight", 16)}</span></span>`;
@@ -97,7 +98,7 @@ export function renderSplash(el, { cfg, theme, fc, people, onGo, dayPlan }) {
   el.dataset.level = m.level;
   // Sunset over the Golden Horn (Wikimedia Commons; credited on the Photo credits screen via places.geojson),
   // drifting slowly like a drone shot.
-  const photo = `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(SPLASH_PHOTO)}?width=1280`;
+  const photo = photoUrl(SPLASH_PHOTO, 1280);
   el.innerHTML = `
     <div class="sp-photo" aria-hidden="true"><img src="${photo}" alt="" onload="this.parentNode.classList.add('is-loaded')"></div>
     <div class="sp-scrim" aria-hidden="true"></div>

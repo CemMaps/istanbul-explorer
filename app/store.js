@@ -28,6 +28,9 @@ const uid = () => "r" + Date.now().toString(36) + Math.random().toString(36).sli
 
 export const store = {
   get: () => state,
+  // Undo: take a copy before a change, put it back if the user taps Undo.
+  snapshot: () => JSON.stringify(state),
+  restore(snap) { state = JSON.parse(snap); save(); },
   setName(name) { state.name = name; save(); },
   on: (fn) => listeners.add(fn),
   isHearted: (id) => state.hearts.includes(id),

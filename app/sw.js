@@ -8,7 +8,7 @@
 //            Never trimmed (a small, bounded set).
 //   tiles  – map tiles of every basemap. Capped, oldest out first. Kept across updates.
 //   photos – Wikimedia photos. Capped. Kept across updates.
-const VERSION = "oit-v40";
+const VERSION = "oit-v41";
 const SHELL_CACHE = `${VERSION}-shell`;
 const CORE = "oit-core-1", TILES = "oit-tiles-1", PHOTOS = "oit-photos-1";
 const KEEP = [SHELL_CACHE, CORE, TILES, PHOTOS];

@@ -720,6 +720,10 @@ function renderVibeLegend() {
   const life = S.vibe === "lifestyle";
   const rows = life ? CFG.vibe.lifestyles.map((l) => [l.id, l.label, `--life-${l.id}`]) : CFG.vibe.classes.map((c) => [c.id, c.short, `--vibe-${c.id}`]);
   const one = S.vibeOnly[0];
+  // Tap a colour and the panel says what it means (2026-11-10, Cem: the short names alone were hard to read).
+  const pick = one && (life ? vibeLife(one) : vibeCls(one));
+  const what = pick ? `<p class="vp-what" style="--v: var(--${life ? "life" : "vibe"}-${one})"><i></i><span><b>${esc(pick.label)}</b>${esc(pick.feel.replace(/\.?$/, "."))}</span></p>`
+    : `<p class="vp-what is-hint">Tap a colour to see what it means and show only those areas.</p>`;
   const keep = $(".vp-chips", el)?.scrollLeft || 0; // tapping a colour must not jump the row back to the start
   el.innerHTML = `<div class="vp-head">
       <div class="vl-seg" role="tablist" aria-label="Colour the map by">
@@ -727,9 +731,11 @@ function renderVibeLegend() {
         <button role="tab" data-vmode="lifestyle" aria-selected="${life}">Lifestyle</button></div>
       <button class="icon-btn small" data-vclose aria-label="Close the vibe map">${icon("close", 18)}</button></div>
     <div class="vp-chips">${rows.map(([id, label, v]) => `<button data-vonly="${id}" aria-pressed="${one === id}" class="${one && one !== id ? "is-off" : ""}">
-      <i style="background: var(${v})"></i>${esc(label)}</button>`).join("")}</div>`;
+      <i style="background: var(${v})"></i>${esc(label)}</button>`).join("")}</div>${what}`;
   el.hidden = false;
   $(".vp-chips", el).scrollLeft = keep;
+  // The panel's height changes with the line above: keep the map credit and buttons just above it.
+  document.documentElement.style.setProperty("--sheet-peek", `${el.offsetHeight}px`);
 }
 $("#vibe-legend").addEventListener("click", (e) => {
   if (e.target.closest("[data-vclose]")) return setVibe(null);
@@ -759,8 +765,7 @@ function setVibe(mode) {
   renderVibeLegend();
   $("#sheet").hidden = !!mode;
   document.documentElement.classList.toggle("vibe-on", !!mode);
-  // The legend floats over the map: the map itself doesn't move (only the small credit line steps up).
-  if (mode && !wasOn) document.documentElement.style.setProperty("--sheet-peek", `${$("#vibe-legend").offsetHeight}px`);
+  // The legend floats over the map: the map itself doesn't move (only the small credit line steps up; renderVibeLegend).
   if (!mode && wasOn) setSheet(S.sheet === "open" ? "peek" : S.sheet);
 }
 $("#btn-vibe").addEventListener("click", () => setVibe(S.vibe ? null : "character"));
@@ -932,9 +937,11 @@ function renderSaved() {
   if (S.savedTab === "mine") {
     ids = me.hearts.filter((id) => BYID[id]);
     // Golden Horn at sunset (Commons; credited on the credits list via places.geojson).
-    top = `<section class="share-card" style="--share-photo: url('${photoUrl("Golden Horn Metro Bridge at sunset.jpg", 960)}')">
-        <h2>Share your saved places</h2>
-        <button class="btn-share" id="share-btn">${icon("share", 18)} Share${ids.length ? ` · ${ids.length}` : ""}</button>
+    // A quiet card, no photo (2026-11-10, Cem: with the place photos below, a photo here was one too many).
+    top = `<section class="share-card">
+        <span class="sc-ico">${icon("share", 20)}</span>
+        <div class="sc-txt"><h2>Share with the group</h2><p>Send your saved places as a link.</p></div>
+        <button class="btn-share" id="share-btn">Share${ids.length ? ` · ${ids.length}` : ""}</button>
       </section>`;
     const others = Object.entries(all);
     badgeFor = (id) => { const w = others.filter(([, p]) => p.hearts.includes(id)).map(([n]) => n); return w.length ? `${w.join(" & ")} saved this too` : ""; };

@@ -59,7 +59,7 @@
     "ferry": "#2F6F7E",
     "rail": "#66505A"
   },
-  "radius": 20,
+  "radius": 16,
   "shadow": 0.12,
   "basemap": "voyager",
   "pinStyle": "outlined",

@@ -860,3 +860,17 @@ img.ph.is-in { opacity: 1; }
 .es-ico { width: 60px; height: 60px; margin-bottom: 8px; border-radius: 50%; display: grid; place-items: center; color: var(--c-accent); background: color-mix(in srgb, var(--c-accent) 10%, var(--c-surface)); }
 .empty-state b { font-size: 17px; font-weight: 700; }
 .empty-state p { margin: 0 0 14px; max-width: 28ch; font-size: 14.5px; line-height: 1.45; color: var(--c-ink-2); }
+
+/* ---------- Round 15 (2026-11-10) ---------- */
+/* Vibe panel: what the picked colour means (a hint until one is picked) */
+.vp-what { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0 2px; font-size: 13.5px; line-height: 1.4; color: var(--c-ink-2); animation: fade .2s var(--ease); }
+.vp-what i { flex: none; width: 12px; height: 12px; margin-top: 3px; border-radius: 4px; background: var(--v); }
+.vp-what b { display: block; color: var(--c-ink); font-weight: 700; font-size: 14px; }
+.vp-what.is-hint { font-size: 12.5px; }
+/* Saved: a quiet share card, no photo */
+.share-card { min-height: 0; align-items: center; gap: 12px; padding: 14px; color: var(--c-ink); background: var(--c-surface-2); box-shadow: none; border: 1px solid var(--c-line); border-radius: var(--radius); }
+.share-card h2 { font-size: 15.5px; text-shadow: none; }
+.share-card .sc-txt { flex: 1; min-width: 0; }
+.share-card .sc-txt p { margin: 2px 0 0; font-size: 13px; line-height: 1.35; opacity: 1; color: var(--c-ink-2); }
+.sc-ico { flex: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; background: var(--c-surface); color: var(--c-accent); box-shadow: var(--shadow-sm); }
+.btn-share { height: 40px; padding: 0 18px; background: var(--c-primary); color: var(--c-primary-ink); font-size: 14.5px; box-shadow: none; }

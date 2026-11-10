@@ -723,7 +723,7 @@ function renderVibeLegend() {
   // Tap a colour and the panel says what it means (2026-11-10, Cem: the short names alone were hard to read).
   const pick = one && (life ? vibeLife(one) : vibeCls(one));
   const what = pick ? `<p class="vp-what" style="--v: var(--${life ? "life" : "vibe"}-${one})"><i></i><span><b>${esc(pick.label)}</b>${esc(pick.feel.replace(/\.?$/, "."))}</span></p>`
-    : `<p class="vp-what is-hint">Tap a colour to see what it means and show only those areas.</p>`;
+    : `<p class="vp-what" aria-hidden="true"></p>`; // empty, but the space is kept: the panel never jumps when you pick
   const keep = $(".vp-chips", el)?.scrollLeft || 0; // tapping a colour must not jump the row back to the start
   el.innerHTML = `<div class="vp-head">
       <div class="vl-seg" role="tablist" aria-label="Colour the map by">

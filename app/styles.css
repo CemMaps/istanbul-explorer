@@ -866,7 +866,9 @@ img.ph.is-in { opacity: 1; }
 .vp-what { display: flex; align-items: flex-start; gap: 10px; margin: 8px 0 2px; font-size: 13.5px; line-height: 1.4; color: var(--c-ink-2); animation: fade .2s var(--ease); }
 .vp-what i { flex: none; width: 12px; height: 12px; margin-top: 3px; border-radius: 4px; background: var(--v); }
 .vp-what b { display: block; color: var(--c-ink); font-weight: 700; font-size: 14px; }
-.vp-what.is-hint { font-size: 12.5px; }
+/* Always the height of a name plus two lines of meaning, picked or not, so the panel never moves up when you filter */
+.vp-what { min-height: calc(14px * 1.4 + 2 * 13.5px * 1.4); }
+.vp-what:empty { animation: none; }
 /* Saved: a quiet share card, no photo */
 .share-card { min-height: 0; align-items: center; gap: 12px; padding: 14px; color: var(--c-ink); background: var(--c-surface-2); box-shadow: none; border: 1px solid var(--c-line); border-radius: var(--radius); }
 .share-card h2 { font-size: 15.5px; text-shadow: none; }
